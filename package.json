@@ -1,0 +1,5 @@
+{
+  "name": "lms-root",
+  "private": true,
+  "workspaces": ["server", "client"]
+}

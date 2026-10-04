@@ -1,0 +1,46 @@
+import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+import { useEffect, useState } from "react";
+import { api } from "./api";
+import { EmployeesTab } from "./EmployeesTab";
+import { DepartmentsTab } from "./DepartmentsTab";
+import { GroupsTab } from "./GroupsTab";
+import { CoursesTab } from "./CoursesTab";
+export default function AdminApp() {
+    const [user, setUser] = useState(undefined); // undefined = ещё не проверили
+    const [tab, setTab] = useState("courses");
+    useEffect(() => {
+        api
+            .get("/auth/me")
+            .then((d) => setUser(d.user))
+            .catch(() => setUser(null));
+    }, []);
+    if (user === undefined)
+        return _jsx("p", { style: { padding: 24 }, children: "\u0417\u0430\u0433\u0440\u0443\u0437\u043A\u0430\u2026" });
+    if (user === null)
+        return _jsx(LoginForm, { onLogin: setUser });
+    if (user.role !== "admin")
+        return _jsx("p", { style: { padding: 24 }, children: "\u0414\u043E\u0441\u0442\u0443\u043F \u0442\u043E\u043B\u044C\u043A\u043E \u0434\u043B\u044F \u0430\u0434\u043C\u0438\u043D\u0438\u0441\u0442\u0440\u0430\u0442\u043E\u0440\u0430." });
+    return (_jsxs("div", { style: { fontFamily: "system-ui", maxWidth: 900, margin: "0 auto", padding: 24 }, children: [_jsxs("header", { style: { display: "flex", justifyContent: "space-between", marginBottom: 20 }, children: [_jsx("h1", { children: "\u0410\u0434\u043C\u0438\u043D\u043A\u0430" }), _jsx("button", { onClick: () => api.post("/auth/logout").then(() => setUser(null)), children: "\u0412\u044B\u0439\u0442\u0438" })] }), _jsx("nav", { style: { display: "flex", gap: 8, marginBottom: 20 }, children: [
+                    ["courses", "Курсы"],
+                    ["employees", "Сотрудники"],
+                    ["departments", "Отделы"],
+                    ["groups", "Группы"]
+                ].map(([key, label]) => (_jsx("button", { onClick: () => setTab(key), style: { fontWeight: tab === key ? 700 : 400 }, children: label }, key))) }), tab === "courses" && _jsx(CoursesTab, {}), tab === "employees" && _jsx(EmployeesTab, {}), tab === "departments" && _jsx(DepartmentsTab, {}), tab === "groups" && _jsx(GroupsTab, {})] }));
+}
+function LoginForm({ onLogin }) {
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [error, setError] = useState(null);
+    async function submit(e) {
+        e.preventDefault();
+        setError(null);
+        try {
+            const d = await api.post("/auth/login", { email, password });
+            onLogin(d.user);
+        }
+        catch {
+            setError("Неверный email или пароль");
+        }
+    }
+    return (_jsxs("form", { onSubmit: submit, style: { maxWidth: 320, margin: "80px auto", fontFamily: "system-ui" }, children: [_jsx("h1", { children: "\u0412\u0445\u043E\u0434 \u0432 \u0430\u0434\u043C\u0438\u043D\u043A\u0443" }), _jsx("input", { placeholder: "Email", value: email, onChange: (e) => setEmail(e.target.value), style: { display: "block", width: "100%", marginBottom: 8, padding: 8 } }), _jsx("input", { placeholder: "\u041F\u0430\u0440\u043E\u043B\u044C", type: "password", value: password, onChange: (e) => setPassword(e.target.value), style: { display: "block", width: "100%", marginBottom: 8, padding: 8 } }), error && _jsx("p", { style: { color: "crimson" }, children: error }), _jsx("button", { type: "submit", children: "\u0412\u043E\u0439\u0442\u0438" })] }));
+}
