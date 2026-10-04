@@ -11,6 +11,7 @@ import { adminCourseRoutes } from "./routes/admin-courses.js";
 import { adminAttachmentRoutes } from "./routes/admin-attachments.js";
 import { adminTestRoutes } from "./routes/admin-tests.js";
 import { adminAssignmentRoutes } from "./routes/admin-assignments.js";
+import { meRoutes } from "./routes/me.js";
 import { startDeadlineChecker } from "./jobs/deadlines.js";
 
 const app = Fastify({ logger: true });
@@ -25,6 +26,7 @@ await app.register(adminCourseRoutes);
 await app.register(adminAttachmentRoutes);
 await app.register(adminTestRoutes);
 await app.register(adminAssignmentRoutes);
+await app.register(meRoutes);
 
 app.get("/health", async () => {
   return { status: "ok" };

@@ -5,8 +5,7 @@ import { DepartmentsTab } from "./DepartmentsTab";
 import { GroupsTab } from "./GroupsTab";
 import { CoursesTab } from "./CoursesTab";
 import { AssignmentsTab } from "./AssignmentsTab";
-
-type User = { id: string; fullName: string; email: string; role: string };
+import { LoginForm, type SessionUser as User } from "../shared/LoginForm";
 
 export default function AdminApp() {
   const [user, setUser] = useState<User | null | undefined>(undefined); // undefined = ещё не проверили
@@ -58,43 +57,5 @@ export default function AdminApp() {
       {tab === "departments" && <DepartmentsTab />}
       {tab === "groups" && <GroupsTab />}
     </div>
-  );
-}
-
-function LoginForm({ onLogin }: { onLogin: (u: User) => void }) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    try {
-      const d = await api.post<{ user: User }>("/auth/login", { email, password });
-      onLogin(d.user);
-    } catch {
-      setError("Неверный email или пароль");
-    }
-  }
-
-  return (
-    <form onSubmit={submit} style={{ maxWidth: 320, margin: "80px auto", fontFamily: "system-ui" }}>
-      <h1>Вход в админку</h1>
-      <input
-        placeholder="Email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        style={{ display: "block", width: "100%", marginBottom: 8, padding: 8 }}
-      />
-      <input
-        placeholder="Пароль"
-        type="password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        style={{ display: "block", width: "100%", marginBottom: 8, padding: 8 }}
-      />
-      {error && <p style={{ color: "crimson" }}>{error}</p>}
-      <button type="submit">Войти</button>
-    </form>
   );
 }
