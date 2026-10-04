@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../admin/api";
+import { LessonScreen } from "./LessonScreen";
 
 type Test = { id: string; max_attempts: number | null; pass_score: number };
 type Lesson = {
@@ -26,6 +27,7 @@ export function CourseScreen({ courseId, onBack }: { courseId: string; onBack: (
     null
   );
   const [error, setError] = useState<string | null>(null);
+  const [openLessonId, setOpenLessonId] = useState<string | null>(null);
 
   useEffect(() => {
     api
@@ -33,6 +35,10 @@ export function CourseScreen({ courseId, onBack }: { courseId: string; onBack: (
       .then(setData)
       .catch((e) => setError(e.message));
   }, [courseId]);
+
+  if (openLessonId) {
+    return <LessonScreen lessonId={openLessonId} onBack={() => setOpenLessonId(null)} />;
+  }
 
   return (
     <div style={{ fontFamily: "system-ui", maxWidth: 480, margin: "0 auto", padding: 24 }}>
@@ -59,14 +65,16 @@ export function CourseScreen({ courseId, onBack }: { courseId: string; onBack: (
               {m.lessons.map((l) => (
                 <div
                   key={l.id}
+                  onClick={() => setOpenLessonId(l.id)}
                   style={{
                     marginTop: 8,
                     marginLeft: 12,
                     paddingLeft: 10,
-                    borderLeft: "2px solid #eee"
+                    borderLeft: "2px solid #eee",
+                    cursor: "pointer"
                   }}
                 >
-                  <div>{l.title}</div>
+                  <div style={{ color: "#2f6fed" }}>{l.title}</div>
                   <div style={{ fontSize: 12, color: "#888" }}>
                     {l.hasVideo && "видео · "}
                     {l.hasText && "текст · "}

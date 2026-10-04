@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { pool } from "../db.js";
 import { requireAuth } from "../auth/middleware.js";
+import { checkCourseAccess } from "../access.js";
 
 export async function meRoutes(app: FastifyInstance) {
   app.addHook("preHandler", requireAuth);
@@ -65,21 +66,17 @@ export async function meRoutes(app: FastifyInstance) {
       return { error: "not_found" };
     }
 
+    const access = await checkCourseAccess(req.currentUser!, courseId);
+    if (!access.ok) {
+      reply.code(403);
+      return { error: access.reason };
+    }
+
     const assignRes = await pool.query(
       `select * from assignments where user_id = $1 and course_id = $2`,
       [userId, courseId]
     );
     const assignment = assignRes.rows[0] ?? null;
-
-    if (assignment) {
-      if (assignment.status === "overdue") {
-        reply.code(403);
-        return { error: "deadline_passed" };
-      }
-    } else {
-      reply.code(403);
-      return { error: course.visibility === "open_catalog" ? "not_enrolled" : "not_assigned" };
-    }
 
     const modulesRes = await pool.query(
       `select id, title, position from modules where course_id = $1 order by position`,
@@ -128,5 +125,41 @@ export async function meRoutes(app: FastifyInstance) {
     }));
 
     return { course, assignment, modules: tree };
+  });
+
+  // Содержимое урока: текст, видео, список вложений (без контента файла —
+  // файл отдаётся отдельно через /attachments/:id/download).
+  app.get<{ Params: { id: string } }>("/lessons/:id", async (req, reply) => {
+    const lessonRes = await pool.query(
+      `select l.*, m.course_id from lessons l join modules m on m.id = l.module_id where l.id = $1`,
+      [req.params.id]
+    );
+    const lesson = lessonRes.rows[0];
+    if (!lesson) {
+      reply.code(404);
+      return { error: "not_found" };
+    }
+
+    const access = await checkCourseAccess(req.currentUser!, lesson.course_id);
+    if (!access.ok) {
+      reply.code(403);
+      return { error: access.reason };
+    }
+
+    const attachmentsRes = await pool.query(
+      `select id, file_name, size_bytes from lesson_attachments where lesson_id = $1 order by position`,
+      [req.params.id]
+    );
+
+    return {
+      lesson: {
+        id: lesson.id,
+        title: lesson.title,
+        textContent: lesson.text_content,
+        videoProvider: lesson.video_provider,
+        videoRef: lesson.video_ref
+      },
+      attachments: attachmentsRes.rows
+    };
   });
 }

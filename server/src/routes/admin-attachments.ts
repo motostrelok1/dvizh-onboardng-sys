@@ -5,6 +5,7 @@ import { pipeline } from "node:stream/promises";
 import { pool } from "../db.js";
 import { requireAdmin, requireAuth } from "../auth/middleware.js";
 import { attachmentPath, ensureLessonDir, storedFileName } from "../storage.js";
+import { checkCourseAccess, getCourseIdForAttachment } from "../access.js";
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 МБ — стартовый лимит, см. SPEC §18
 const ALLOWED_EXTENSIONS = [".pdf", ".doc", ".docx", ".xls", ".xlsx", ".png", ".jpg", ".jpeg"];
@@ -70,8 +71,9 @@ export async function adminAttachmentRoutes(app: FastifyInstance) {
     }
   );
 
-  // Скачивание — пока доступно любому вошедшему пользователю (админу).
-  // Проверка доступа сотрудника к курсу добавится в этапе 7 вместе с кабинетом.
+  // Скачивание — только вошедшему пользователю с доступом к курсу этого урока
+  // (админ — всегда; сотрудник — если курс назначен и не просрочен, либо он
+  // записан на курс из открытого каталога).
   app.get<{ Params: { id: string } }>(
     "/attachments/:id/download",
     { preHandler: requireAuth },
@@ -82,6 +84,14 @@ export async function adminAttachmentRoutes(app: FastifyInstance) {
         reply.code(404);
         return { error: "not_found" };
       }
+
+      const courseId = await getCourseIdForAttachment(req.params.id);
+      const access = courseId ? await checkCourseAccess(req.currentUser!, courseId) : { ok: false as const, reason: "not_found" as const };
+      if (!access.ok) {
+        reply.code(403);
+        return { error: access.reason };
+      }
+
       reply.header(
         "Content-Disposition",
         `attachment; filename="${encodeURIComponent(row.file_name)}"`
