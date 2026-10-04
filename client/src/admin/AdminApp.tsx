@@ -4,12 +4,15 @@ import { EmployeesTab } from "./EmployeesTab";
 import { DepartmentsTab } from "./DepartmentsTab";
 import { GroupsTab } from "./GroupsTab";
 import { CoursesTab } from "./CoursesTab";
+import { AssignmentsTab } from "./AssignmentsTab";
 
 type User = { id: string; fullName: string; email: string; role: string };
 
 export default function AdminApp() {
   const [user, setUser] = useState<User | null | undefined>(undefined); // undefined = ещё не проверили
-  const [tab, setTab] = useState<"employees" | "departments" | "groups" | "courses">("courses");
+  const [tab, setTab] = useState<"employees" | "departments" | "groups" | "courses" | "assignments">(
+    "courses"
+  );
 
   useEffect(() => {
     api
@@ -33,6 +36,7 @@ export default function AdminApp() {
         {(
           [
             ["courses", "Курсы"],
+            ["assignments", "Назначения"],
             ["employees", "Сотрудники"],
             ["departments", "Отделы"],
             ["groups", "Группы"]
@@ -49,6 +53,7 @@ export default function AdminApp() {
       </nav>
 
       {tab === "courses" && <CoursesTab />}
+      {tab === "assignments" && <AssignmentsTab />}
       {tab === "employees" && <EmployeesTab />}
       {tab === "departments" && <DepartmentsTab />}
       {tab === "groups" && <GroupsTab />}

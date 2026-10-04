@@ -10,6 +10,8 @@ import { adminGroupRoutes } from "./routes/admin-groups.js";
 import { adminCourseRoutes } from "./routes/admin-courses.js";
 import { adminAttachmentRoutes } from "./routes/admin-attachments.js";
 import { adminTestRoutes } from "./routes/admin-tests.js";
+import { adminAssignmentRoutes } from "./routes/admin-assignments.js";
+import { startDeadlineChecker } from "./jobs/deadlines.js";
 
 const app = Fastify({ logger: true });
 
@@ -22,6 +24,7 @@ await app.register(adminGroupRoutes);
 await app.register(adminCourseRoutes);
 await app.register(adminAttachmentRoutes);
 await app.register(adminTestRoutes);
+await app.register(adminAssignmentRoutes);
 
 app.get("/health", async () => {
   return { status: "ok" };
@@ -57,3 +60,5 @@ app.listen({ port, host: "0.0.0.0" }).catch((err) => {
   app.log.error(err);
   process.exit(1);
 });
+
+startDeadlineChecker();
