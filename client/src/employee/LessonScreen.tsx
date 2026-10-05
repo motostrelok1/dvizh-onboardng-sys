@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "../admin/api";
+import { enqueueEvent } from "../events";
 
 type Lesson = {
   id: string;
@@ -20,6 +21,7 @@ const ERROR_MESSAGE: Record<string, string> = {
 export function LessonScreen({ lessonId, onBack }: { lessonId: string; onBack: () => void }) {
   const [data, setData] = useState<{ lesson: Lesson; attachments: Attachment[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const startedAtRef = useRef<number | null>(null);
 
   useEffect(() => {
     api
@@ -27,6 +29,23 @@ export function LessonScreen({ lessonId, onBack }: { lessonId: string; onBack: (
       .then(setData)
       .catch((e) => setError(e.message));
   }, [lessonId]);
+
+  // Время, проведённое на уроке — пишем в журнал событий (этап 8), не
+  // дожидаясь прогресса/аналитики, которые будут считаться из него позже.
+  useEffect(() => {
+    if (!data) return;
+    startedAtRef.current = Date.now();
+    enqueueEvent({ eventType: "lesson_view_start", entityId: lessonId });
+    return () => {
+      if (startedAtRef.current) {
+        enqueueEvent({
+          eventType: "lesson_view_end",
+          entityId: lessonId,
+          payload: { durationMs: Date.now() - startedAtRef.current }
+        });
+      }
+    };
+  }, [data, lessonId]);
 
   return (
     <div style={{ fontFamily: "system-ui", maxWidth: 480, margin: "0 auto", padding: 24 }}>

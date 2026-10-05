@@ -123,11 +123,19 @@
       повторный finish, 409 на превышение лимита) и через клиент за
       прокси — работает
 
-- [ ] 8. Журнал событий
-      Спецификация: SPEC.md §13
-      Куда: /server/events, /client (сбор событий)
-      Готово когда: пишутся session_start/end, lesson_view, test_attempt,
-      question_answered, attachment_download; клиент буферизует при обрыве связи
+- [x] 8. Журнал событий
+      Готово: миграция events (append-only); src/events.ts (logEvent,
+      logEventsBatch). Сервер сам пишет: session_start/end (логин, принятие
+      приглашения, логаут), test_attempt_start/end, question_answered,
+      attachment_download, assignment_created, deadline_extended,
+      access_closed (при автозакрытии по дедлайну) — эти типы с клиента не
+      принимаются (чтобы нельзя было подделать). POST /events принимает
+      только lesson_view_start/end пакетом (до 200 за раз), остальное молча
+      отбрасывает. Клиент: src/events.ts — очередь в localStorage, flush по
+      таймеру (15с), по событию online и через sendBeacon на pagehide;
+      LessonScreen шлёт start/end с длительностью при входе/выходе с урока.
+      Прогнано curl'ом (все 8 типов событий проверены в БД напрямую) и через
+      клиент за прокси — работает
 
 - [ ] 9. Карточка сотрудника и дашборд администратора
       Спецификация: SPEC.md §7, §12

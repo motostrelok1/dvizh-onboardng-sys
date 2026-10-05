@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { pool } from "../db.js";
 import { requireAdmin } from "../auth/middleware.js";
 import { closeOverdueAssignments } from "../jobs/deadlines.js";
+import { logEvent } from "../events.js";
 
 type TargetType = "user" | "group" | "department";
 
@@ -66,8 +67,9 @@ export async function adminAssignmentRoutes(app: FastifyInstance) {
     const client = await pool.connect();
     try {
       await client.query("begin");
+      const assignmentIds: { userId: string; id: string }[] = [];
       for (const userId of userIds) {
-        await client.query(
+        const res = await client.query(
           `insert into assignments (user_id, course_id, assigned_by, source_group_id, source_department_id, deadline, is_required)
            values ($1, $2, $3, $4, $5, $6, coalesce($7, true))
            on conflict (user_id, course_id) do update set
@@ -76,11 +78,21 @@ export async function adminAssignmentRoutes(app: FastifyInstance) {
              source_group_id = excluded.source_group_id,
              source_department_id = excluded.source_department_id,
              status = case when assignments.status = 'overdue' then 'assigned' else assignments.status end,
-             closed_at = case when assignments.status = 'overdue' then null else assignments.closed_at end`,
+             closed_at = case when assignments.status = 'overdue' then null else assignments.closed_at end
+           returning id`,
           [userId, courseId, req.currentUser!.id, sourceGroupId, sourceDepartmentId, deadline ?? null, isRequired]
         );
+        assignmentIds.push({ userId, id: res.rows[0].id });
       }
       await client.query("commit");
+
+      for (const a of assignmentIds) {
+        await logEvent(a.userId, "assignment_created", {
+          entityType: "assignment",
+          entityId: a.id,
+          payload: { courseId, assignedBy: req.currentUser!.id }
+        });
+      }
     } catch (err) {
       await client.query("rollback");
       throw err;
@@ -96,6 +108,7 @@ export async function adminAssignmentRoutes(app: FastifyInstance) {
   app.post<{ Params: { id: string }; Body: { deadline: string | null } }>(
     "/admin/assignments/:id/extend-deadline",
     async (req) => {
+      const before = await pool.query(`select deadline from assignments where id = $1`, [req.params.id]);
       const res = await pool.query(
         `update assignments set
            deadline = $2,
@@ -105,7 +118,15 @@ export async function adminAssignmentRoutes(app: FastifyInstance) {
          returning *`,
         [req.params.id, req.body.deadline]
       );
-      return { assignment: res.rows[0] };
+      const assignment = res.rows[0];
+      if (assignment) {
+        await logEvent(assignment.user_id, "deadline_extended", {
+          entityType: "assignment",
+          entityId: assignment.id,
+          payload: { oldDeadline: before.rows[0]?.deadline ?? null, newDeadline: req.body.deadline, by: req.currentUser!.id }
+        });
+      }
+      return { assignment };
     }
   );
 

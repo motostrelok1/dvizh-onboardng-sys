@@ -1,6 +1,7 @@
 import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "../admin/api";
+import { enqueueEvent } from "../events";
 const ERROR_MESSAGE = {
     deadline_passed: "Срок прохождения этого курса истёк, доступ закрыт.",
     not_assigned: "Этот курс вам не назначен.",
@@ -10,12 +11,30 @@ const ERROR_MESSAGE = {
 export function LessonScreen({ lessonId, onBack }) {
     const [data, setData] = useState(null);
     const [error, setError] = useState(null);
+    const startedAtRef = useRef(null);
     useEffect(() => {
         api
             .get(`/lessons/${lessonId}`)
             .then(setData)
             .catch((e) => setError(e.message));
     }, [lessonId]);
+    // Время, проведённое на уроке — пишем в журнал событий (этап 8), не
+    // дожидаясь прогресса/аналитики, которые будут считаться из него позже.
+    useEffect(() => {
+        if (!data)
+            return;
+        startedAtRef.current = Date.now();
+        enqueueEvent({ eventType: "lesson_view_start", entityId: lessonId });
+        return () => {
+            if (startedAtRef.current) {
+                enqueueEvent({
+                    eventType: "lesson_view_end",
+                    entityId: lessonId,
+                    payload: { durationMs: Date.now() - startedAtRef.current }
+                });
+            }
+        };
+    }, [data, lessonId]);
     return (_jsxs("div", { style: { fontFamily: "system-ui", maxWidth: 480, margin: "0 auto", padding: 24 }, children: [_jsx("button", { onClick: onBack, style: { marginBottom: 12 }, children: "\u2190 \u041D\u0430\u0437\u0430\u0434 \u043A \u043A\u0443\u0440\u0441\u0443" }), error && _jsx("p", { style: { color: "crimson" }, children: ERROR_MESSAGE[error] ?? "Не удалось открыть урок." }), data && (_jsxs(_Fragment, { children: [_jsx("h1", { children: data.lesson.title }), _jsx(VideoPlayer, { provider: data.lesson.videoProvider, videoRef: data.lesson.videoRef }), data.lesson.textContent && (_jsx("p", { style: { whiteSpace: "pre-wrap", lineHeight: 1.5 }, children: data.lesson.textContent })), data.attachments.length > 0 && (_jsxs("div", { style: { marginTop: 16 }, children: [_jsx("h3", { style: { fontSize: 14 }, children: "\u0414\u043E\u043F\u043E\u043B\u043D\u0438\u0442\u0435\u043B\u044C\u043D\u044B\u0435 \u043C\u0430\u0442\u0435\u0440\u0438\u0430\u043B\u044B" }), data.attachments.map((a) => (_jsxs("div", { style: { marginBottom: 6 }, children: [_jsxs("a", { href: `/api/attachments/${a.id}/download`, download: true, children: ["\uD83D\uDCC4 ", a.file_name] }), " ", _jsxs("span", { style: { fontSize: 12, color: "#888" }, children: ["(", Math.ceil(a.size_bytes / 1024), " \u041A\u0411)"] })] }, a.id)))] }))] }))] }));
 }
 // Встраивание плеера зависит от провайдера видео. Это упрощённая версия —

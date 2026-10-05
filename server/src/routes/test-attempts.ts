@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { pool } from "../db.js";
 import { requireAuth } from "../auth/middleware.js";
 import { checkCourseAccess, getCourseIdForTest } from "../access.js";
+import { logEvent } from "../events.js";
 
 export async function testAttemptRoutes(app: FastifyInstance) {
   app.addHook("preHandler", requireAuth);
@@ -71,6 +72,11 @@ export async function testAttemptRoutes(app: FastifyInstance) {
         [req.params.testId, req.currentUser!.id, attemptsUsed + 1]
       );
       attempt = insertRes.rows[0];
+      await logEvent(req.currentUser!.id, "test_attempt_start", {
+        entityType: "test",
+        entityId: req.params.testId,
+        payload: { attemptId: attempt.id, attemptNumber: attempt.attempt_number }
+      });
     }
 
     const questionsRes = await pool.query(
@@ -141,6 +147,12 @@ export async function testAttemptRoutes(app: FastifyInstance) {
         [req.params.attemptId, questionId, selectedAnswerIds, isCorrect]
       );
 
+      await logEvent(req.currentUser!.id, "question_answered", {
+        entityType: "question",
+        entityId: questionId,
+        payload: { attemptId: req.params.attemptId, isCorrect, selectedAnswerIds }
+      });
+
       return { ok: true };
     }
   );
@@ -181,6 +193,12 @@ export async function testAttemptRoutes(app: FastifyInstance) {
        where id = $1`,
       [req.params.attemptId, score, passed]
     );
+
+    await logEvent(req.currentUser!.id, "test_attempt_end", {
+      entityType: "test",
+      entityId: attempt.test_id,
+      payload: { attemptId: attempt.id, score, passed }
+    });
 
     const result: any = { score, passed, passScore: test.pass_score };
 

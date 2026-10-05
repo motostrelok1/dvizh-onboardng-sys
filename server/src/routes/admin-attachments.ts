@@ -6,6 +6,7 @@ import { pool } from "../db.js";
 import { requireAdmin, requireAuth } from "../auth/middleware.js";
 import { attachmentPath, ensureLessonDir, storedFileName } from "../storage.js";
 import { checkCourseAccess, getCourseIdForAttachment } from "../access.js";
+import { logEvent } from "../events.js";
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 МБ — стартовый лимит, см. SPEC §18
 const ALLOWED_EXTENSIONS = [".pdf", ".doc", ".docx", ".xls", ".xlsx", ".png", ".jpg", ".jpeg"];
@@ -91,6 +92,12 @@ export async function adminAttachmentRoutes(app: FastifyInstance) {
         reply.code(403);
         return { error: access.reason };
       }
+
+      await logEvent(req.currentUser!.id, "attachment_download", {
+        entityType: "attachment",
+        entityId: row.id,
+        payload: { lessonId: row.lesson_id, fileName: row.file_name }
+      });
 
       reply.header(
         "Content-Disposition",

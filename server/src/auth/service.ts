@@ -1,5 +1,6 @@
 import { pool } from "../db.js";
 import { randomToken, hashToken, hashPassword, verifyPassword } from "./crypto.js";
+import { logEvent } from "../events.js";
 
 const INVITATION_TTL_DAYS = 7;
 const SESSION_TTL_DAYS = 30;
@@ -89,6 +90,7 @@ export async function acceptInvitation(token: string, password: string) {
     const session = await createSessionWithClient(client, inv.user_id);
 
     await client.query("commit");
+    await logEvent(inv.user_id, "session_start", { entityType: "session", payload: { method: "invitation" } });
     return session;
   } catch (err) {
     await client.query("rollback");
@@ -152,6 +154,7 @@ export async function login(email: string, password: string) {
   if (!ok) throw new AuthError("invalid_credentials");
 
   const session = await createSession(user.id);
+  await logEvent(user.id, "session_start", { entityType: "session", payload: { method: "password" } });
   return { session, user: toPublicUser(user) };
 }
 

@@ -8,6 +8,7 @@ import {
   AuthError
 } from "../auth/service.js";
 import { SESSION_COOKIE, SESSION_MAX_AGE } from "../auth/constants.js";
+import { logEvent } from "../events.js";
 
 function setSessionCookie(reply: any, token: string) {
   reply.setCookie(SESSION_COOKIE, token, {
@@ -68,7 +69,11 @@ export async function authRoutes(app: FastifyInstance) {
 
   app.post("/auth/logout", async (req, reply) => {
     const token = req.cookies[SESSION_COOKIE];
-    if (token) await deleteSession(token);
+    if (token) {
+      const user = await getUserBySession(token);
+      await deleteSession(token);
+      if (user) await logEvent(user.id, "session_end", { entityType: "session" });
+    }
     reply.clearCookie(SESSION_COOKIE, { path: "/" });
     return { ok: true };
   });
