@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../admin/api";
 import { LessonScreen } from "./LessonScreen";
+import { TestScreen } from "./TestScreen";
 
 type Test = { id: string; max_attempts: number | null; pass_score: number };
 type Lesson = {
@@ -28,6 +29,7 @@ export function CourseScreen({ courseId, onBack }: { courseId: string; onBack: (
   );
   const [error, setError] = useState<string | null>(null);
   const [openLessonId, setOpenLessonId] = useState<string | null>(null);
+  const [openTestId, setOpenTestId] = useState<string | null>(null);
 
   useEffect(() => {
     api
@@ -38,6 +40,9 @@ export function CourseScreen({ courseId, onBack }: { courseId: string; onBack: (
 
   if (openLessonId) {
     return <LessonScreen lessonId={openLessonId} onBack={() => setOpenLessonId(null)} />;
+  }
+  if (openTestId) {
+    return <TestScreen testId={openTestId} onBack={() => setOpenTestId(null)} />;
   }
 
   return (
@@ -61,7 +66,7 @@ export function CourseScreen({ courseId, onBack }: { courseId: string; onBack: (
           {data.modules.map((m) => (
             <div key={m.id} style={{ border: "1px solid #ddd", borderRadius: 10, padding: 12, marginBottom: 10 }}>
               <strong>{m.title}</strong>
-              {m.test && <TestBadge test={m.test} />}
+              {m.test && <TestBadge test={m.test} onOpen={() => setOpenTestId(m.test!.id)} />}
               {m.lessons.map((l) => (
                 <div
                   key={l.id}
@@ -79,8 +84,16 @@ export function CourseScreen({ courseId, onBack }: { courseId: string; onBack: (
                     {l.hasVideo && "видео · "}
                     {l.hasText && "текст · "}
                     {l.attachmentsCount > 0 && `материалов: ${l.attachmentsCount} · `}
-                    {l.test ? "есть тест" : ""}
                   </div>
+                  {l.test && (
+                    <TestBadge
+                      test={l.test}
+                      onOpen={(e) => {
+                        e.stopPropagation();
+                        setOpenTestId(l.test!.id);
+                      }}
+                    />
+                  )}
                 </div>
               ))}
             </div>
@@ -93,10 +106,10 @@ export function CourseScreen({ courseId, onBack }: { courseId: string; onBack: (
   );
 }
 
-function TestBadge({ test }: { test: Test }) {
+function TestBadge({ test, onOpen }: { test: Test; onOpen: (e: React.MouseEvent) => void }) {
   return (
-    <span style={{ fontSize: 12, marginLeft: 8, color: "#2f6fed" }}>
-      · тест (проходной {test.pass_score}%, попыток: {test.max_attempts ?? "∞"})
-    </span>
+    <button onClick={onOpen} style={{ fontSize: 12, marginLeft: 8, color: "#2f6fed" }}>
+      тест (проходной {test.pass_score}%, попыток: {test.max_attempts ?? "∞"})
+    </button>
   );
 }
