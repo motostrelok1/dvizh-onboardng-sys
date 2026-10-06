@@ -5,13 +5,14 @@ import { DepartmentsTab } from "./DepartmentsTab";
 import { GroupsTab } from "./GroupsTab";
 import { CoursesTab } from "./CoursesTab";
 import { AssignmentsTab } from "./AssignmentsTab";
+import { DashboardTab } from "./DashboardTab";
 import { LoginForm, type SessionUser as User } from "../shared/LoginForm";
 
 export default function AdminApp() {
   const [user, setUser] = useState<User | null | undefined>(undefined); // undefined = ещё не проверили
-  const [tab, setTab] = useState<"employees" | "departments" | "groups" | "courses" | "assignments">(
-    "courses"
-  );
+  const [tab, setTab] = useState<
+    "dashboard" | "employees" | "departments" | "groups" | "courses" | "assignments"
+  >("dashboard");
 
   useEffect(() => {
     api
@@ -34,6 +35,7 @@ export default function AdminApp() {
       <nav style={{ display: "flex", gap: 8, marginBottom: 20 }}>
         {(
           [
+            ["dashboard", "Дашборд"],
             ["courses", "Курсы"],
             ["assignments", "Назначения"],
             ["employees", "Сотрудники"],
@@ -51,6 +53,7 @@ export default function AdminApp() {
         ))}
       </nav>
 
+      {tab === "dashboard" && <DashboardTab />}
       {tab === "courses" && <CoursesTab />}
       {tab === "assignments" && <AssignmentsTab />}
       {tab === "employees" && <EmployeesTab />}
