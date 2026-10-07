@@ -6,12 +6,14 @@ import { GroupsTab } from "./GroupsTab";
 import { CoursesTab } from "./CoursesTab";
 import { AssignmentsTab } from "./AssignmentsTab";
 import { DashboardTab } from "./DashboardTab";
+import { ReportsTab } from "./ReportsTab";
+import { SettingsTab } from "./SettingsTab";
 import { LoginForm, type SessionUser as User } from "../shared/LoginForm";
 
 export default function AdminApp() {
   const [user, setUser] = useState<User | null | undefined>(undefined); // undefined = ещё не проверили
   const [tab, setTab] = useState<
-    "dashboard" | "employees" | "departments" | "groups" | "courses" | "assignments"
+    "dashboard" | "employees" | "departments" | "groups" | "courses" | "assignments" | "reports" | "settings"
   >("dashboard");
 
   useEffect(() => {
@@ -38,6 +40,8 @@ export default function AdminApp() {
             ["dashboard", "Дашборд"],
             ["courses", "Курсы"],
             ["assignments", "Назначения"],
+            ["reports", "Отчёты"],
+            ["settings", "Настройки"],
             ["employees", "Сотрудники"],
             ["departments", "Отделы"],
             ["groups", "Группы"]
@@ -56,6 +60,8 @@ export default function AdminApp() {
       {tab === "dashboard" && <DashboardTab />}
       {tab === "courses" && <CoursesTab />}
       {tab === "assignments" && <AssignmentsTab />}
+      {tab === "reports" && <ReportsTab />}
+      {tab === "settings" && <SettingsTab />}
       {tab === "employees" && <EmployeesTab />}
       {tab === "departments" && <DepartmentsTab />}
       {tab === "groups" && <GroupsTab />}

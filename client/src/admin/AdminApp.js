@@ -7,6 +7,8 @@ import { GroupsTab } from "./GroupsTab";
 import { CoursesTab } from "./CoursesTab";
 import { AssignmentsTab } from "./AssignmentsTab";
 import { DashboardTab } from "./DashboardTab";
+import { ReportsTab } from "./ReportsTab";
+import { SettingsTab } from "./SettingsTab";
 import { LoginForm } from "../shared/LoginForm";
 export default function AdminApp() {
     const [user, setUser] = useState(undefined); // undefined = ещё не проверили
@@ -27,8 +29,10 @@ export default function AdminApp() {
                     ["dashboard", "Дашборд"],
                     ["courses", "Курсы"],
                     ["assignments", "Назначения"],
+                    ["reports", "Отчёты"],
+                    ["settings", "Настройки"],
                     ["employees", "Сотрудники"],
                     ["departments", "Отделы"],
                     ["groups", "Группы"]
-                ].map(([key, label]) => (_jsx("button", { onClick: () => setTab(key), style: { fontWeight: tab === key ? 700 : 400 }, children: label }, key))) }), tab === "dashboard" && _jsx(DashboardTab, {}), tab === "courses" && _jsx(CoursesTab, {}), tab === "assignments" && _jsx(AssignmentsTab, {}), tab === "employees" && _jsx(EmployeesTab, {}), tab === "departments" && _jsx(DepartmentsTab, {}), tab === "groups" && _jsx(GroupsTab, {})] }));
+                ].map(([key, label]) => (_jsx("button", { onClick: () => setTab(key), style: { fontWeight: tab === key ? 700 : 400 }, children: label }, key))) }), tab === "dashboard" && _jsx(DashboardTab, {}), tab === "courses" && _jsx(CoursesTab, {}), tab === "assignments" && _jsx(AssignmentsTab, {}), tab === "reports" && _jsx(ReportsTab, {}), tab === "settings" && _jsx(SettingsTab, {}), tab === "employees" && _jsx(EmployeesTab, {}), tab === "departments" && _jsx(DepartmentsTab, {}), tab === "groups" && _jsx(GroupsTab, {})] }));
 }

@@ -15,6 +15,9 @@ import { meRoutes } from "./routes/me.js";
 import { testAttemptRoutes } from "./routes/test-attempts.js";
 import { eventRoutes } from "./routes/events.js";
 import { adminDashboardRoutes } from "./routes/admin-dashboard.js";
+import { adminAnalyticsSettingsRoutes } from "./routes/admin-analytics-settings.js";
+import { adminReportRoutes } from "./routes/admin-reports.js";
+import { startReportScheduler } from "./jobs/reports.js";
 import { startDeadlineChecker } from "./jobs/deadlines.js";
 
 const app = Fastify({ logger: true });
@@ -33,6 +36,8 @@ await app.register(meRoutes);
 await app.register(testAttemptRoutes);
 await app.register(eventRoutes);
 await app.register(adminDashboardRoutes);
+await app.register(adminAnalyticsSettingsRoutes);
+await app.register(adminReportRoutes);
 
 app.get("/health", async () => {
   return { status: "ok" };
@@ -70,3 +75,4 @@ app.listen({ port, host: "0.0.0.0" }).catch((err) => {
 });
 
 startDeadlineChecker();
+startReportScheduler();

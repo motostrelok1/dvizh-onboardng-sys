@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { pool } from "../db.js";
 import { requireAdmin } from "../auth/middleware.js";
 import { getCourseProgress } from "../progress.js";
+import { getFlagsForUser } from "../analytics/rules.js";
 
 const ACTIVE_WINDOW_DAYS = 7;
 
@@ -62,6 +63,7 @@ export async function adminDashboardRoutes(app: FastifyInstance) {
           [emp.id]
         );
         const lastSessionAt = lastSessionRes.rows[0].last;
+        const flagsCount = (await getFlagsForUser(emp.id)).length;
 
         employeeRows.push({
           id: emp.id,
@@ -70,6 +72,7 @@ export async function adminDashboardRoutes(app: FastifyInstance) {
           assignedCourses: assignRes.rows.length,
           averageProgress,
           overdueCount,
+          flagsCount,
           lastSessionAt
         });
       }
@@ -84,13 +87,15 @@ export async function adminDashboardRoutes(app: FastifyInstance) {
           ? Math.round(withProgress.reduce((s, e) => s + (e.averageProgress ?? 0), 0) / withProgress.length)
           : null;
       const overdueAssignmentsCount = employeeRows.reduce((s, e) => s + e.overdueCount, 0);
+      const flaggedEmployeesCount = employeeRows.filter((e) => e.flagsCount > 0).length;
 
       return {
         summary: {
           totalEmployees: employeeRows.length,
           activeEmployees: activeEmployeesCount,
           averageProgressPercent,
-          overdueAssignmentsCount
+          overdueAssignmentsCount,
+          flaggedEmployeesCount
         },
         employees: employeeRows
       };
@@ -141,7 +146,10 @@ export async function adminDashboardRoutes(app: FastifyInstance) {
       [req.params.id]
     );
 
+    const flags = await getFlagsForUser(req.params.id);
+
     return {
+      flags,
       user: {
         id: user.id,
         fullName: user.full_name,

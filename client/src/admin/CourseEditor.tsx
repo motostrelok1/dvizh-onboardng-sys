@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "./api";
 import { TestBlock } from "./TestBlock";
+import { CourseAnalyticsSettings } from "./CourseAnalyticsSettings";
 
 type Attachment = { id: string; file_name: string; size_bytes: number };
 type Test = { id: string; max_attempts: number | null; show_correct_answers: boolean; pass_score: number };
@@ -80,6 +81,10 @@ export function CourseEditor({ courseId, onBack }: { courseId: string; onBack: (
             <option value="open_catalog">открытый каталог</option>
           </select>
         </label>
+      </div>
+
+      <div style={{ marginBottom: 16 }}>
+        <CourseAnalyticsSettings courseId={courseId} />
       </div>
 
       {modules.map((m, i) => (

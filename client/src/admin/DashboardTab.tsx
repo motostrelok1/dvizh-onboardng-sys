@@ -11,6 +11,7 @@ type EmployeeRow = {
   assignedCourses: number;
   averageProgress: number | null;
   overdueCount: number;
+  flagsCount: number;
   lastSessionAt: string | null;
 };
 type Summary = {
@@ -18,6 +19,7 @@ type Summary = {
   activeEmployees: number;
   averageProgressPercent: number | null;
   overdueAssignmentsCount: number;
+  flaggedEmployeesCount: number;
 };
 
 export function DashboardTab() {
@@ -82,6 +84,7 @@ export function DashboardTab() {
             value={summary.averageProgressPercent !== null ? `${summary.averageProgressPercent}%` : "—"}
           />
           <Tile label="Просрочено" value={summary.overdueAssignmentsCount} alert={summary.overdueAssignmentsCount > 0} />
+          <Tile label="С флагами внимания" value={summary.flaggedEmployeesCount} alert={summary.flaggedEmployeesCount > 0} />
         </div>
       )}
 
@@ -93,6 +96,7 @@ export function DashboardTab() {
             <th>Курсов</th>
             <th>Прогресс</th>
             <th>Просрочено</th>
+            <th>Флагов</th>
             <th>Последний вход</th>
             <th></th>
           </tr>
@@ -105,6 +109,7 @@ export function DashboardTab() {
               <td>{e.assignedCourses}</td>
               <td>{e.averageProgress !== null ? `${e.averageProgress}%` : "—"}</td>
               <td style={{ color: e.overdueCount > 0 ? "crimson" : undefined }}>{e.overdueCount || "—"}</td>
+              <td style={{ color: e.flagsCount > 0 ? "#c98000" : undefined }}>{e.flagsCount || "—"}</td>
               <td>{e.lastSessionAt ? new Date(e.lastSessionAt).toLocaleString() : "никогда"}</td>
               <td>
                 <button onClick={() => setOpenEmployeeId(e.id)} style={{ fontSize: 12 }}>

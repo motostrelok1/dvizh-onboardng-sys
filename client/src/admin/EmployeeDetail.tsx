@@ -16,10 +16,12 @@ type Stats = {
   totalViewMinutes: number;
 };
 type Event = { event_type: string; entity_type: string | null; payload: Record<string, any>; occurred_at: string };
+type Flag = { rule: string; message: string; courseTitle?: string };
 type Log = {
   user: { fullName: string; email: string; departmentName: string | null; timezone: string; isActive: boolean };
   assignments: Assignment[];
   stats: Stats;
+  flags: Flag[];
   recentEvents: Event[];
 };
 
@@ -73,6 +75,20 @@ export function EmployeeDetail({ userId, onBack }: { userId: string; onBack: () 
         <Tile label="Попыток тестов" value={log.stats.testAttempts} />
         <Tile label="Времени на уроках" value={`${log.stats.totalViewMinutes} мин`} />
       </div>
+
+      {log.flags.length > 0 && (
+        <div style={{ marginBottom: 20 }}>
+          <h3>На что обратить внимание</h3>
+          {log.flags.map((f, i) => (
+            <div
+              key={i}
+              style={{ background: "#fff6e5", border: "1px solid #f0d090", borderRadius: 8, padding: 8, marginBottom: 6, fontSize: 13 }}
+            >
+              {f.message}
+            </div>
+          ))}
+        </div>
+      )}
 
       <h3>Курсы</h3>
       {log.assignments.map((a) => (

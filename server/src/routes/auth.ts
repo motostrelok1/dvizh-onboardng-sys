@@ -9,6 +9,7 @@ import {
 } from "../auth/service.js";
 import { SESSION_COOKIE, SESSION_MAX_AGE } from "../auth/constants.js";
 import { logEvent } from "../events.js";
+import { ensureReportsUpToYesterday } from "../jobs/reports.js";
 
 function setSessionCookie(reply: any, token: string) {
   reply.setCookie(SESSION_COOKIE, token, {
@@ -57,6 +58,11 @@ export async function authRoutes(app: FastifyInstance) {
     try {
       const { session, user } = await login(req.body.email, req.body.password);
       setSessionCookie(reply, session.token);
+      if (user.role === "admin") {
+        // Подготовка отчёта запускается по входу администратора (SPEC §8);
+        // не блокируем ответ — отчёт нужен на дашборде, а не в этом JSON.
+        ensureReportsUpToYesterday("login").catch((err) => app.log.error(err));
+      }
       return { user };
     } catch (err) {
       if (err instanceof AuthError) {
