@@ -11,6 +11,7 @@
     "migrate:down": "dotenv -e .env -- node-pg-migrate -m migrations down",
     "seed:admin": "dotenv -e .env -- tsx scripts/seed-admin.ts",
     "invite": "dotenv -e .env -- tsx scripts/create-invitation.ts",
+    "vapid:generate": "tsx scripts/generate-vapid-keys.ts",
     "test": "node --test --import tsx dist_test_placeholder"
   },
   "dependencies": {
@@ -19,7 +20,8 @@
     "@fastify/multipart": "^8.3.0",
     "pg": "^8.12.0",
     "dotenv": "^16.4.5",
-    "bcryptjs": "^2.4.3"
+    "bcryptjs": "^2.4.3",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "typescript": "^5.5.4",
@@ -27,6 +29,7 @@
     "@types/node": "^20.14.9",
     "@types/pg": "^8.11.6",
     "@types/bcryptjs": "^2.4.6",
+    "@types/web-push": "^3.6.4",
     "node-pg-migrate": "^7.6.1",
     "dotenv-cli": "^7.4.2"
   }

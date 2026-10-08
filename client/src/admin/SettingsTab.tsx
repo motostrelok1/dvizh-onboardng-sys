@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "./api";
+import { NotificationRulesSection } from "./NotificationRulesSection";
 
 type Settings = Record<string, any>;
 type ProblemQuestion = {
@@ -174,7 +175,9 @@ export function SettingsTab() {
         </div>
       )}
 
-      <h2>Проблемные вопросы</h2>
+      <NotificationRulesSection />
+
+      <h2 style={{ marginTop: 24 }}>Проблемные вопросы</h2>
       {problemQuestions.length === 0 && <p style={{ color: "#888" }}>Пока ничего не превышает порог.</p>}
       {problemQuestions.map((q) => (
         <div key={q.questionId} style={{ border: "1px solid #f0d090", background: "#fff6e5", borderRadius: 8, padding: 10, marginBottom: 6 }}>

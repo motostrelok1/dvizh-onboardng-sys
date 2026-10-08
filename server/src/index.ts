@@ -18,6 +18,9 @@ import { adminDashboardRoutes } from "./routes/admin-dashboard.js";
 import { adminAnalyticsSettingsRoutes } from "./routes/admin-analytics-settings.js";
 import { adminReportRoutes } from "./routes/admin-reports.js";
 import { startReportScheduler } from "./jobs/reports.js";
+import { adminNotificationRuleRoutes } from "./routes/admin-notification-rules.js";
+import { notificationRoutes, publicPushRoutes } from "./routes/notifications.js";
+import { startNotificationScheduler } from "./jobs/notifications.js";
 import { startDeadlineChecker } from "./jobs/deadlines.js";
 
 const app = Fastify({ logger: true });
@@ -38,6 +41,9 @@ await app.register(eventRoutes);
 await app.register(adminDashboardRoutes);
 await app.register(adminAnalyticsSettingsRoutes);
 await app.register(adminReportRoutes);
+await app.register(adminNotificationRuleRoutes);
+await app.register(publicPushRoutes);
+await app.register(notificationRoutes);
 
 app.get("/health", async () => {
   return { status: "ok" };
@@ -76,3 +82,4 @@ app.listen({ port, host: "0.0.0.0" }).catch((err) => {
 
 startDeadlineChecker();
 startReportScheduler();
+startNotificationScheduler();

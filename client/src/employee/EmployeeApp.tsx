@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "../admin/api";
 import { LoginForm, type SessionUser } from "../shared/LoginForm";
 import { CourseScreen } from "./CourseScreen";
+import { Notifications } from "./Notifications";
 
 type AssignedCourse = {
   assignment_id: string;
@@ -65,7 +66,10 @@ export default function EmployeeApp() {
     <div style={{ fontFamily: "system-ui", maxWidth: 480, margin: "0 auto", padding: 24 }}>
       <header style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}>
         <h1>Мои курсы</h1>
-        <button onClick={() => api.post("/auth/logout").then(() => setUser(null))}>Выйти</button>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <Notifications />
+          <button onClick={() => api.post("/auth/logout").then(() => setUser(null))}>Выйти</button>
+        </div>
       </header>
 
       {assigned.map((c) => (
