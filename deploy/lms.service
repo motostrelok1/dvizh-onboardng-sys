@@ -9,6 +9,7 @@ User=lms
 Group=lms
 WorkingDirectory=/opt/lms/server
 EnvironmentFile=/opt/lms/server/.env
+Environment=NODE_ENV=production
 ExecStart=/usr/bin/node dist/index.js
 Restart=on-failure
 RestartSec=5
