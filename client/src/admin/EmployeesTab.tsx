@@ -22,6 +22,7 @@ export function EmployeesTab() {
   const [departmentId, setDepartmentId] = useState("");
   const [timezone, setTimezone] = useState("Europe/Moscow");
   const [inviteLinks, setInviteLinks] = useState<Record<string, string>>({});
+  const [copiedFor, setCopiedFor] = useState<string | null>(null);
 
   function reload() {
     api.get<{ users: Employee[] }>("/admin/users").then((d) => setUsers(d.users));
@@ -47,7 +48,22 @@ export function EmployeesTab() {
 
   async function issueInvitation(id: string) {
     const d = await api.post<{ link: string }>(`/admin/users/${id}/invitations`);
-    setInviteLinks((m) => ({ ...m, [id]: d.link }));
+    // Сервер отдаёт относительный путь (/invite/<токен>) — для отправки
+    // сотруднику нужна полная ссылка на домен, где развёрнуто приложение.
+    const fullLink = new URL(d.link, window.location.origin).toString();
+    setInviteLinks((m) => ({ ...m, [id]: fullLink }));
+    setCopiedFor(null);
+  }
+
+  async function copyLink(id: string, link: string) {
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopiedFor(id);
+      setTimeout(() => setCopiedFor((cur) => (cur === id ? null : cur)), 2000);
+    } catch {
+      // Буфер обмена недоступен (нет разрешения/не HTTPS) — ссылка и так
+      // видна текстом рядом с кнопкой, пользователь скопирует вручную.
+    }
   }
 
   return (
@@ -95,7 +111,12 @@ export function EmployeesTab() {
                   <>
                     <button onClick={() => issueInvitation(u.id)}>Выпустить ссылку</button>
                     {inviteLinks[u.id] && (
-                      <div style={{ fontSize: 12, wordBreak: "break-all" }}>{inviteLinks[u.id]}</div>
+                      <div style={{ marginTop: 4 }}>
+                        <div style={{ fontSize: 12, wordBreak: "break-all" }}>{inviteLinks[u.id]}</div>
+                        <button type="button" onClick={() => copyLink(u.id, inviteLinks[u.id])}>
+                          {copiedFor === u.id ? "Скопировано" : "Копировать"}
+                        </button>
+                      </div>
                     )}
                   </>
                 )}
