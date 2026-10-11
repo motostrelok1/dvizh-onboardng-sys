@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "./api";
 
 type Employee = {
@@ -23,6 +23,9 @@ export function EmployeesTab() {
   const [timezone, setTimezone] = useState("Europe/Moscow");
   const [inviteLinks, setInviteLinks] = useState<Record<string, string>>({});
   const [copiedFor, setCopiedFor] = useState<string | null>(null);
+  const issuing = useRef(false);
+  const [issuingId, setIssuingId] = useState<string | null>(null);
+  const [inviteError, setInviteError] = useState<string | null>(null);
 
   function reload() {
     api.get<{ users: Employee[] }>("/admin/users").then((d) => setUsers(d.users));
@@ -47,12 +50,25 @@ export function EmployeesTab() {
   }
 
   async function issueInvitation(id: string) {
-    const d = await api.post<{ link: string }>(`/admin/users/${id}/invitations`);
-    // Сервер отдаёт относительный путь (/invite#<токен>) — для отправки
-    // сотруднику нужна полная ссылка на домен, где развёрнуто приложение.
-    const fullLink = new URL(d.link, window.location.origin).toString();
-    setInviteLinks((m) => ({ ...m, [id]: fullLink }));
-    setCopiedFor(null);
+    if (issuing.current) return;
+    issuing.current = true;
+    setIssuingId(id);
+    setInviteError(null);
+    try {
+      const d = await api.post<{ link: string }>(`/admin/users/${id}/invitations`);
+      // Сервер отдаёт относительный путь (/invite#<токен>) — для отправки
+      // сотруднику нужна полная ссылка на домен, где развёрнуто приложение.
+      const fullLink = new URL(d.link, window.location.origin).toString();
+      setInviteLinks((m) => ({ ...m, [id]: fullLink }));
+      setCopiedFor(null);
+    } catch (err) {
+      setInviteError(err instanceof Error && err.message === "user_inactive"
+        ? "Сотрудник отключён. Для восстановления доступа администратор должен сначала включить учётную запись."
+        : "Не удалось выпустить приглашение. Обновите список сотрудников и попробуйте снова.");
+    } finally {
+      issuing.current = false;
+      setIssuingId(null);
+    }
   }
 
   async function copyLink(id: string, link: string) {
@@ -87,6 +103,8 @@ export function EmployeesTab() {
         <button type="submit">Добавить сотрудника</button>
       </form>
 
+      <p>Новая ссылка отменяет предыдущие. После установки пароля сотрудник выйдет из остальных сессий.</p>
+      {inviteError && <p role="alert" style={{ color: "crimson" }}>{inviteError}</p>}
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead>
           <tr style={{ textAlign: "left", borderBottom: "1px solid #ccc" }}>
@@ -109,7 +127,11 @@ export function EmployeesTab() {
               <td>
                 {u.role === "employee" && (
                   <>
-                    <button onClick={() => issueInvitation(u.id)}>Выпустить ссылку</button>
+                    <button disabled={!u.is_active || issuingId !== null}
+                      title={!u.is_active ? "Учётная запись отключена" : undefined}
+                      onClick={() => issueInvitation(u.id)}>
+                      {issuingId === u.id ? "Выпускаем…" : "Выпустить ссылку"}
+                    </button>
                     {inviteLinks[u.id] && (
                       <div style={{ marginTop: 4 }}>
                         <div style={{ fontSize: 12, wordBreak: "break-all" }}>{inviteLinks[u.id]}</div>
