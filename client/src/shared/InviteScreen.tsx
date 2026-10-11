@@ -6,7 +6,8 @@ type InvitationStatus =
   | { phase: "loading" }
   | { phase: "invalid"; reason: string }
   | { phase: "ready"; fullName: string; email: string }
-  | { phase: "accepted" };
+  | { phase: "accepted" }
+  | { phase: "limited" };
 
 const REASON_TEXT: Record<string, string> = {
   not_found: "Ссылка-приглашение не найдена.",
@@ -34,14 +35,20 @@ export function InviteScreen({ token, onLogin }: { token: string; onLogin: (u: S
           setStatus({ phase: "invalid", reason: d.reason ?? "not_found" });
         }
       })
-      .catch(() => setStatus({ phase: "invalid", reason: "not_found" }));
+      .catch((err) => setStatus(err instanceof Error && err.message === "rate_limited"
+        ? { phase: "limited" } : { phase: "invalid", reason: "not_found" }));
   }, [token]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (submitting) return;
     setError(null);
     if (password.length < 8) {
       setError("Пароль должен быть не короче 8 символов");
+      return;
+    }
+    if (new TextEncoder().encode(password).length > 72) {
+      setError("Пароль слишком длинный: максимум 72 байта (буквы кириллицы занимают больше одного байта).");
       return;
     }
     if (password !== password2) {
@@ -55,13 +62,23 @@ export function InviteScreen({ token, onLogin }: { token: string; onLogin: (u: S
       setStatus({ phase: "accepted" });
       onLogin(me.user);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Не удалось задать пароль");
+      const message = err instanceof Error ? err.message : "";
+      setError(message === "rate_limited"
+        ? "Слишком много попыток. Подождите до 10 минут и попробуйте снова."
+        : message === "password_too_long" ? "Пароль слишком длинный: максимум 72 байта."
+        : message || "Не удалось задать пароль");
       setSubmitting(false);
     }
   }
 
   if (status.phase === "loading") {
     return <p style={{ padding: 24, fontFamily: "system-ui" }}>Проверяем ссылку…</p>;
+  }
+
+  if (status.phase === "limited") {
+    return <p style={{ padding: 24, fontFamily: "system-ui" }}>
+      Слишком много запросов. Подождите до 10 минут, затем откройте ссылку снова.
+    </p>;
   }
 
   if (status.phase === "invalid") {

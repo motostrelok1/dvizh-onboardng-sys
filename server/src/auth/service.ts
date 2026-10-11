@@ -128,7 +128,7 @@ export async function getUserBySession(token: string): Promise<PublicUser | null
   const res = await pool.query(
     `select u.* from sessions s
      join users u on u.id = s.user_id
-     where s.token_hash = $1 and s.expires_at > now()`,
+     where s.token_hash = $1 and s.expires_at > now() and u.is_active = true`,
     [tokenHash]
   );
   const row = res.rows[0];
