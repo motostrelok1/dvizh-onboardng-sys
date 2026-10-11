@@ -13,13 +13,18 @@ export async function checkCourseAccess(user: PublicUser, courseId: string): Pro
   if (!course || course.status === "archived") return { ok: false, reason: "not_found" };
 
   const assignRes = await pool.query(
-    `select * from assignments where user_id = $1 and course_id = $2`,
+    `select *, coalesce(deadline <= clock_timestamp(), false) as deadline_passed
+     from assignments where user_id = $1 and course_id = $2`,
     [user.id, courseId]
   );
   const assignment = assignRes.rows[0];
 
   if (assignment) {
-    if (assignment.status === "overdue") return { ok: false, reason: "deadline_passed" };
+    // The stored status can lag behind the deadline job. Use the database
+    // clock and timestamp precision; completed courses have no exemption.
+    if (assignment.status === "overdue" || assignment.deadline_passed) {
+      return { ok: false, reason: "deadline_passed" };
+    }
     return { ok: true };
   }
 
