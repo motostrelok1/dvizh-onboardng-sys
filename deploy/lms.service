@@ -1,0 +1,25 @@
+[Unit]
+Description=LMS — обучение персонала (Node/Fastify)
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=lms
+Group=lms
+WorkingDirectory=/opt/lms/server
+EnvironmentFile=/opt/lms/server/.env
+ExecStart=/usr/bin/node dist/index.js
+Restart=on-failure
+RestartSec=5
+# Планировщики (дедлайны/отчёты/уведомления) живут в этом же процессе —
+# отдельного юнита под них не нужно (см. server/src/index.ts).
+
+# Небольшое ужесточение песочницы — процесс не лезет за пределы своих файлов
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/opt/lms/server/uploads /opt/lms/server/logs
+
+[Install]
+WantedBy=multi-user.target

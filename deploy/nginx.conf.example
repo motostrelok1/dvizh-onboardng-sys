@@ -1,0 +1,95 @@
+# Пример конфигурации Nginx для поддомена edu.ваш-домен.ru (SPEC §11).
+# Nginx отдаёт статику клиента из dist и проксирует /api/ на Node
+# (Fastify слушает 127.0.0.1:3000, см. server/.env PORT).
+#
+# Установка: скопировать в /etc/nginx/sites-available/edu.example.ru,
+# заменить example.ru на реальный домен и пути, затем:
+#   ln -s /etc/nginx/sites-available/edu.example.ru /etc/nginx/sites-enabled/
+#   certbot --nginx -d edu.example.ru
+#   nginx -t && systemctl reload nginx
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name edu.example.ru;
+    # certbot допишет сюда редирект на https после выпуска сертификата
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name edu.example.ru;
+
+    # certbot --nginx допишет ssl_certificate/ssl_certificate_key сюда
+
+    root /var/www/lms/client-dist;
+    index index.html;
+
+    client_max_body_size 55m; # лимит вложений урока — 50 МиБ (SPEC §18) + запас на заголовки
+
+    # Приложение — PWA: index.html и файл манифеста/service worker не кэшируются
+    # браузером, иначе обновление версии не долетит до пользователей.
+    location = /index.html {
+        add_header Cache-Control "no-cache";
+        try_files $uri =404;
+    }
+    location = /sw.js {
+        add_header Cache-Control "no-cache";
+        try_files $uri =404;
+    }
+    location = /manifest.webmanifest {
+        add_header Cache-Control "no-cache";
+        default_type application/manifest+json;
+        try_files $uri =404;
+    }
+
+    # Остальная статика (хэшированные имена файлов сборки) — кэшируется надолго
+    location /assets/ {
+        add_header Cache-Control "public, max-age=31536000, immutable";
+        try_files $uri =404;
+    }
+
+    # Скрытые файлы (.env, .git и т.п.) никогда не отдаются
+    location ~ /\. {
+        deny all;
+    }
+
+    # API — проксируется на Node с срезанием префикса /api
+    location /api/ {
+        # В строке запроса (а значит и в access_log) может оказаться токен
+        # приглашения из query/path — маскируем его тем же способом, что
+        # и в error_log (см. комментарий ниже), чтобы не хранить секрет в логах.
+        proxy_pass http://127.0.0.1:3000/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # SPA fallback: любой прочий путь (включая /invite/<токен>) отдаёт
+    # оболочку приложения, маршрутизация — на стороне клиента
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
+
+# Маскирование токена приглашения в логах доступа: если путь содержит
+# /invite/<токен>, пишем в access_log не сам токен, а плейсхолдер.
+# Подключить в http{} основного nginx.conf (вне этого server-блока):
+#
+# map $request $lms_masked_request {
+#     "~^(?<method>\S+)\s+/invite/[^/\s]+(?<rest>.*)$" "$method /invite/MASKED$rest";
+#     default $request;
+# }
+# log_format lms_masked '$remote_addr - $remote_user [$time_local] '
+#                        '"$lms_masked_request" $status $body_bytes_sent '
+#                        '"$http_referer" "$http_user_agent"';
+#
+# и использовать в этом server-блоке: access_log /var/log/nginx/lms.access.log lms_masked;
+#
+# Известное ограничение (открытая задача SEC-07, см. additions.md): это
+# маскирование не действует на error_log — там Nginx сам пишет полную
+# строку запроса при ошибках апстрима (502/504 и т.п.), и токен может туда
+# попасть. Решается переносом токена из пути в тело запроса на клиенте
+# и сервере, что ещё не сделано.

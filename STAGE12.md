@@ -8,11 +8,12 @@
 - [x] 12.3 Регистрация SW + баннер «нет сети»
 - [x] 12.4 Экран приглашения /invite/<токен> (вход по ссылке)
 - [x] 12.5 Ссылка-приглашение в админке (полная ссылка + «копировать»)
-- [ ] 12.6 Деплой: nginx.conf.example, lms.service, deploy.sh
+- [x] 12.6 Деплой: nginx.conf.example, lms.service, deploy.sh
 - [ ] 12.7 Бэкап: backup.sh (pg_dump + uploads), проверка восстановления
 - [ ] 12.8 Сборка и проверка: typecheck, build, запуск, ручной прогон
 
 ## Журнал (что взял в работу / что сделал)
+- 2026-10-11: 12.6 сделано — deploy/nginx.conf.example (статика client/dist, прокси /api на 127.0.0.1:3000, no-cache на index.html/sw.js/manifest, client_max_body_size 55m, deny скрытых файлов, заготовка map для маскирования токена в access_log + пометка про нерешённый SEC-07 в error_log), deploy/lms.service (systemd, ProtectSystem=strict), deploy/deploy.sh (git pull, npm ci, миграции, сборка server/client, rsync в WEB_ROOT, restart, health-check). Синтаксис deploy.sh проверен (bash -n).
 - 2026-10-11: 12.5 сделано — EmployeesTab.tsx: ссылка из API (относительный путь) превращается в полный URL (new URL(link, location.origin)) перед показом, кнопка «Копировать» через navigator.clipboard с фолбэком (текст и так виден) и индикацией «Скопировано». Сборка прошла.
 - 2026-10-11: 12.4 сделано — shared/InviteScreen.tsx (проверка ссылки GET /auth/invitations/:token, форма пароля, POST .../accept, типовые тексты причин невалидности), маршрут /invite/<токен> в App.tsx (чтение location.pathname, без роутера; после успеха чистит URL и состояние). Сборка прошла, dev-сервер отдаёт SPA-оболочку на /invite/abc123 (200).
 - 2026-10-11: 12.3 сделано — main.tsx регистрирует /sw.js только в PROD, перезагружает страницу при активации новой версии (кроме самой первой установки), shared/OfflineBanner.tsx показывает баннер по online/offline событиям, подключён в App.tsx. Сборка прошла.
