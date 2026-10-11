@@ -8,7 +8,7 @@ export async function testAttemptRoutes(app: FastifyInstance) {
   app.addHook("preHandler", requireAuth);
 
   // Проверить доступ к курсу, которому принадлежит тест. Общая часть для
-  // всех трёх маршрутов ниже.
+  // чтения/старта попыток, сохранения ответов и завершения теста.
   async function requireTestAccess(req: any, reply: any, testId: string) {
     const courseId = await getCourseIdForTest(testId);
     if (!courseId) {
@@ -127,6 +127,9 @@ export async function testAttemptRoutes(app: FastifyInstance) {
         return { error: "attempt_already_finished" };
       }
 
+      const courseId = await requireTestAccess(req, reply, attempt.test_id);
+      if (!courseId) return;
+
       const { questionId, selectedAnswerIds } = req.body;
       const correctRes = await pool.query(
         `select id from answers where question_id = $1 and is_correct = true`,
@@ -170,6 +173,9 @@ export async function testAttemptRoutes(app: FastifyInstance) {
       reply.code(409);
       return { error: "attempt_already_finished" };
     }
+
+    const courseId = await requireTestAccess(req, reply, attempt.test_id);
+    if (!courseId) return;
 
     const testRes = await pool.query(`select * from tests where id = $1`, [attempt.test_id]);
     const test = testRes.rows[0];

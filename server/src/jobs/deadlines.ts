@@ -1,15 +1,16 @@
 import { pool } from "../db.js";
 import { logEvent } from "../events.js";
 
-// Назначения, у которых наступил дедлайн, переводим в overdue — это и есть
-// «закрыт доступ к этому курсу» (SPEC §5.1). Курс не удаляется, прогресс и
-// логи сохраняются, затрагивается только это назначение.
+// Фиксируем просрочку незавершённых назначений и событие (SPEC §5.1).
+// Доступ закрывает checkCourseAccess непосредственно по времени БД,
+// независимо от запуска job. Завершённые назначения сохраняют свой статус,
+// но дедлайн закрывает доступ к ним тоже; данные и логи не удаляются.
 export async function closeOverdueAssignments(): Promise<number> {
   const res = await pool.query(
     `update assignments
-       set status = 'overdue', closed_at = now()
+       set status = 'overdue', closed_at = clock_timestamp()
      where deadline is not null
-       and deadline < now()
+       and deadline <= clock_timestamp()
        and status in ('assigned', 'in_progress')
      returning id, user_id, course_id`
   );

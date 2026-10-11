@@ -13,7 +13,9 @@ export async function meRoutes(app: FastifyInstance) {
     const userId = req.currentUser!.id;
 
     const assignedRes = await pool.query(
-      `select a.id as assignment_id, a.status, a.deadline, a.is_required,
+      `select a.id as assignment_id,
+              case when a.deadline <= clock_timestamp() then 'overdue' else a.status end as status,
+              a.deadline, a.is_required,
               c.id as course_id, c.title, c.description
        from assignments a
        join courses c on c.id = a.course_id
