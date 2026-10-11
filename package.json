@@ -1,5 +1,9 @@
 {
   "name": "lms-root",
   "private": true,
+  "scripts": {
+    "build": "npm run build --workspace server && npm run build --workspace client",
+    "test": "npm test --workspace server"
+  },
   "workspaces": ["server", "client"]
 }
