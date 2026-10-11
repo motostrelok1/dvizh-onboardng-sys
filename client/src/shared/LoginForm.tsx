@@ -7,15 +7,22 @@ export function LoginForm({ onLogin }: { onLogin: (u: SessionUser) => void }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (submitting) return;
     setError(null);
+    setSubmitting(true);
     try {
       const d = await api.post<{ user: SessionUser }>("/auth/login", { email, password });
       onLogin(d.user);
-    } catch {
-      setError("Неверный email или пароль");
+    } catch (err) {
+      setError(err instanceof Error && err.message === "rate_limited"
+        ? "Слишком много попыток входа. Подождите до 10 минут и попробуйте снова."
+        : "Неверный email или пароль");
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -36,7 +43,7 @@ export function LoginForm({ onLogin }: { onLogin: (u: SessionUser) => void }) {
         style={{ display: "block", width: "100%", marginBottom: 8, padding: 8 }}
       />
       {error && <p style={{ color: "crimson" }}>{error}</p>}
-      <button type="submit">Войти</button>
+      <button type="submit" disabled={submitting}>{submitting ? "Входим…" : "Войти"}</button>
     </form>
   );
 }

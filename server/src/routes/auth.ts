@@ -10,6 +10,17 @@ import {
 import { SESSION_COOKIE, SESSION_MAX_AGE } from "../auth/constants.js";
 import { logEvent } from "../events.js";
 import { ensureReportsUpToYesterday } from "../jobs/reports.js";
+import { pool } from "../db.js";
+import { hashToken } from "../auth/crypto.js";
+import { AUTH_ACCOUNT_MAX, enforceAuthLimit, limitAuthIp, limitInvitationLookup } from "../auth/rate-limit.js";
+
+function validToken(token: string): boolean {
+  return /^[A-Za-z0-9_-]{1,128}$/.test(token);
+}
+
+function bodyObject(body: unknown): Record<string, unknown> | null {
+  return body && typeof body === "object" && !Array.isArray(body) ? body as Record<string, unknown> : null;
+}
 
 function setSessionCookie(reply: any, token: string) {
   reply.setCookie(SESSION_COOKIE, token, {
@@ -23,7 +34,8 @@ function setSessionCookie(reply: any, token: string) {
 
 export async function authRoutes(app: FastifyInstance) {
   // Проверить ссылку-приглашение (для экрана «задать пароль»)
-  app.get<{ Params: { token: string } }>("/auth/invitations/:token", async (req, reply) => {
+  app.get<{ Params: { token: string } }>("/auth/invitations/:token", { onRequest: limitInvitationLookup }, async (req, reply) => {
+    if (!validToken(req.params.token)) return reply.code(400).send({ error: "invalid_request" });
     const status = await getInvitationStatus(req.params.token);
     if (!status.valid) {
       reply.code(404);
@@ -33,15 +45,29 @@ export async function authRoutes(app: FastifyInstance) {
   });
 
   // Принять приглашение: задать пароль, сразу войти
-  app.post<{ Params: { token: string }; Body: { password: string } }>(
+  app.post<{ Params: { token: string }; Body: unknown }>(
     "/auth/invitations/:token/accept",
+    { onRequest: limitAuthIp, bodyLimit: 8 * 1024 },
     async (req, reply) => {
-      if (!req.body?.password || req.body.password.length < 8) {
+      const token = req.params.token;
+      if (!validToken(token)) return reply.code(400).send({ error: "invalid_request" });
+      if (!await enforceAuthLimit(req, reply, "invitation_token", token, AUTH_ACCOUNT_MAX)) return;
+      const invitation = await pool.query<{ user_id: string }>(
+        `select user_id from invitations where token_hash = $1 and used_at is null
+         and revoked_at is null and expires_at > now()`, [hashToken(token)]);
+      if (invitation.rows[0] && !await enforceAuthLimit(req, reply, "invitation_account",
+        invitation.rows[0].user_id, AUTH_ACCOUNT_MAX)) return;
+      const body = bodyObject(req.body);
+      if (!body || typeof body.password !== "string") return reply.code(400).send({ error: "invalid_request" });
+      if (body.password.length < 8) {
         reply.code(400);
         return { error: "password_too_short" };
       }
+      // bcrypt silently truncates at 72 bytes. Reject this for new passwords;
+      // login accepts bounded longer legacy passwords without changing hashes.
+      if (Buffer.byteLength(body.password, "utf8") > 72) return reply.code(400).send({ error: "password_too_long" });
       try {
-        const session = await acceptInvitation(req.params.token, req.body.password);
+        const session = await acceptInvitation(token, body.password);
         setSessionCookie(reply, session.token);
         return { ok: true };
       } catch (err) {
@@ -55,9 +81,16 @@ export async function authRoutes(app: FastifyInstance) {
   );
 
   // Вход по email/паролю (для тех, кто уже принял приглашение)
-  app.post<{ Body: { email: string; password: string } }>("/auth/login", async (req, reply) => {
+  app.post<{ Body: unknown }>("/auth/login", { onRequest: limitAuthIp, bodyLimit: 8 * 1024 }, async (req, reply) => {
+    const body = bodyObject(req.body);
+    if (!body || typeof body.email !== "string" || !body.email.trim() || body.email.length > 254) {
+      return reply.code(400).send({ error: "invalid_request" });
+    }
+    if (!await enforceAuthLimit(req, reply, "login_account", body.email, AUTH_ACCOUNT_MAX)) return;
+    if (typeof body.password !== "string" || !body.password || body.password.length > 1024 ||
+        Buffer.byteLength(body.password, "utf8") > 4096) return reply.code(400).send({ error: "invalid_request" });
     try {
-      const { session, user } = await login(req.body.email, req.body.password);
+      const { session, user } = await login(body.email, body.password);
       setSessionCookie(reply, session.token);
       if (user.role === "admin") {
         // Подготовка отчёта запускается по входу администратора (SPEC §8);
