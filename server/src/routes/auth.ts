@@ -14,6 +14,7 @@ import { ensureReportsUpToYesterday } from "../jobs/reports.js";
 function setSessionCookie(reply: any, token: string) {
   reply.setCookie(SESSION_COOKIE, token, {
     httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
     maxAge: SESSION_MAX_AGE
