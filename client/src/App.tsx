@@ -5,18 +5,14 @@ import { InviteScreen } from "./shared/InviteScreen";
 import OfflineBanner from "./shared/OfflineBanner";
 import AdminApp from "./admin/AdminApp";
 import EmployeeApp from "./employee/EmployeeApp";
+import { readInviteToken } from "./shared/invitation-location";
 
-// Ссылка-приглашение вида /invite/<токен> — отдельный экран без проверки
-// сессии (пользователь ещё не вошёл). Роутинга в приложении больше нигде
-// нет, поэтому путь читается напрямую из location, без react-router.
-function readInviteToken(): string | null {
-  const match = window.location.pathname.match(/^\/invite\/([^/]+)\/?$/);
-  return match ? decodeURIComponent(match[1]) : null;
-}
+// Read once before React renders: StrictMode may call state initializers twice.
+const initialInviteToken = readInviteToken(window.location, window.history);
 
 export default function App() {
   const [user, setUser] = useState<SessionUser | null | undefined>(undefined);
-  const [inviteToken, setInviteToken] = useState<string | null>(readInviteToken);
+  const [inviteToken, setInviteToken] = useState<string | null>(initialInviteToken);
 
   useEffect(() => {
     if (inviteToken) return;

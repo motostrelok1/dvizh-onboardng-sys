@@ -30,6 +30,11 @@ jobs:
       - run: npm ci
       - name: Build server and client (including PWA)
         run: npm run build
+      - name: Check Nginx privacy configuration and actual logs
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq nginx
+          python3 deploy/test-nginx-privacy.py
 
   integration:
     name: PostgreSQL and auth tests

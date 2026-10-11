@@ -15,6 +15,6 @@ const { token, expiresAt } = await createInvitation(userId, null);
 
 console.log("Токен приглашения (отдать сотруднику одноразово):", token);
 console.log("Действует до:", expiresAt.toISOString());
-console.log(`Ссылка: /invite/${token}`);
+console.log(`Ссылка: /invite#${token}`);
 
 await pool.end();

@@ -119,7 +119,7 @@ export async function checkAndSendNotifications(): Promise<number> {
 
 export function startNotificationScheduler(intervalMs = 60 * 60_000) {
   const run = () => {
-    checkAndSendNotifications().catch((err) => console.error("Ошибка рассылки уведомлений:", err));
+    checkAndSendNotifications().catch((err) => console.error("Ошибка рассылки уведомлений"));
   };
   run();
   return setInterval(run, intervalMs);

@@ -64,7 +64,7 @@ export async function adminUserRoutes(app: FastifyInstance) {
   // Выпустить новую ссылку-приглашение сотруднику
   app.post<{ Params: { id: string } }>("/admin/users/:id/invitations", async (req) => {
     const { token, expiresAt } = await createInvitation(req.params.id, req.currentUser!.id);
-    return { token, expiresAt, link: `/invite/${token}` };
+    return { token, expiresAt, link: `/invite#${token}` };
   });
 
   app.delete<{ Params: { id: string } }>("/admin/invitations/:id", async (req) => {

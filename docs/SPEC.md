@@ -341,8 +341,9 @@ settings_log
 ## 15. API (REST) **[предложение]**
 
 ### Авторизация
-- `GET /auth/invitations/{token}` — проверить ссылку-приглашение
-- `POST /auth/invitations/{token}/accept` — задать пароль и войти
+- `POST /auth/invitations/check` с `{token}` — проверить ссылку-приглашение
+- `POST /auth/invitations/accept` с `{token, password}` — задать пароль и войти
+- Ссылка: `/invite#<token>`; клиент сразу удаляет фрагмент. Старые `/invite/<token>` открываются тем же клиентом, API с токеном в пути удалён (SEC-07).
 - `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`
 
 Для администратора: `POST /admin/users/{id}/invitations` (выпустить новую ссылку), `DELETE /admin/invitations/{id}` (отозвать).

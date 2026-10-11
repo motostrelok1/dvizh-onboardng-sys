@@ -8,10 +8,24 @@
 #   certbot --nginx -d edu.example.ru
 #   nginx -t && systemctl reload nginx
 
+# Файл подключается внутри http{} (стандартный sites-enabled Ubuntu).
+# $uri — нормализованный путь без query. Не пишем Referer, User-Agent,
+# Cookie, Authorization или body: они могут содержать секреты.
+map $uri $lms_log_path {
+    ~*^/invite/ /invite/MASKED;
+    ~*^/api/auth/invitations/(?!check$|accept$) /api/auth/invitations/MASKED;
+    default $uri;
+}
+log_format lms_private '$remote_addr [$time_local] "$request_method $lms_log_path" '
+                       '$status $body_bytes_sent $request_time $upstream_status $upstream_response_time';
+
 server {
     listen 80;
     listen [::]:80;
     server_name edu.example.ru;
+    access_log /var/log/nginx/lms.access.log lms_private;
+    error_log /var/log/nginx/lms.error.log warn; # debug logging may expose body/headers
+    add_header Referrer-Policy "no-referrer" always;
     # certbot допишет сюда редирект на https после выпуска сертификата
 }
 
@@ -19,6 +33,9 @@ server {
     listen 443 ssl http2;
     listen [::]:443 ssl http2;
     server_name edu.example.ru;
+    access_log /var/log/nginx/lms.access.log lms_private;
+    error_log /var/log/nginx/lms.error.log warn;
+    add_header Referrer-Policy "no-referrer" always;
 
     # certbot --nginx допишет ssl_certificate/ssl_certificate_key сюда
 
@@ -31,14 +48,17 @@ server {
     # браузером, иначе обновление версии не долетит до пользователей.
     location = /index.html {
         add_header Cache-Control "no-cache";
+        add_header Referrer-Policy "no-referrer" always;
         try_files $uri =404;
     }
     location = /sw.js {
         add_header Cache-Control "no-cache";
+        add_header Referrer-Policy "no-referrer" always;
         try_files $uri =404;
     }
     location = /manifest.webmanifest {
         add_header Cache-Control "no-cache";
+        add_header Referrer-Policy "no-referrer" always;
         default_type application/manifest+json;
         try_files $uri =404;
     }
@@ -46,6 +66,7 @@ server {
     # Остальная статика (хэшированные имена файлов сборки) — кэшируется надолго
     location /assets/ {
         add_header Cache-Control "public, max-age=31536000, immutable";
+        add_header Referrer-Policy "no-referrer" always;
         try_files $uri =404;
     }
 
@@ -61,9 +82,17 @@ server {
     }
 
     location /api/ {
-        # В строке запроса (а значит и в access_log) может оказаться токен
-        # приглашения из query/path — маскируем его тем же способом, что
-        # и в error_log (см. комментарий ниже), чтобы не хранить секрет в логах.
+        # Standard error_log can append an unredacted legacy Referer at 502.
+        # Use safe access-log status/timings and the sanitized Fastify logger.
+        error_log /dev/null emerg;
+        # Приватный API никогда не использует унаследованный proxy_cache.
+        proxy_cache off;
+        proxy_cache_bypass 1;
+        proxy_no_cache 1;
+        proxy_hide_header Cache-Control;
+        proxy_hide_header Referrer-Policy;
+        add_header Cache-Control "no-store" always;
+        add_header Referrer-Policy "no-referrer" always;
         proxy_pass http://127.0.0.1:3000/;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
@@ -72,29 +101,29 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
-    # SPA fallback: любой прочий путь (включая /invite/<токен>) отдаёт
+    # Старые API-клиенты должны обновить страницу. Nginx error_log не
+    # поддерживает маскирование: эти URI не проксируем и не пишем ошибки.
+    # Новые фиксированные POST /check и /accept передают token в body.
+    location ~* ^/api/auth/invitations/(?!check/?$|accept/?$) {
+        error_log /dev/null emerg;
+        add_header Cache-Control "no-store" always;
+        add_header Referrer-Policy "no-referrer" always;
+        return 410;
+    }
+
+    # Старые ссылки открывают ту же оболочку; клиент удаляет token из URL.
+    # Последний аргумент =404 не делает redirect в другой location, поэтому
+    # даже ошибка чтения файла не попадёт в унаследованный error_log.
+    location ~* ^/invite(?:/|$) {
+        error_log /dev/null emerg;
+        add_header Cache-Control "no-store" always;
+        add_header Referrer-Policy "no-referrer" always;
+        try_files /index.html =404;
+    }
+
+    # SPA fallback: любой прочий путь отдаёт
     # оболочку приложения, маршрутизация — на стороне клиента
     location / {
         try_files $uri $uri/ /index.html;
     }
 }
-
-# Маскирование токена приглашения в логах доступа: если путь содержит
-# /invite/<токен>, пишем в access_log не сам токен, а плейсхолдер.
-# Подключить в http{} основного nginx.conf (вне этого server-блока):
-#
-# map $request $lms_masked_request {
-#     "~^(?<method>\S+)\s+/invite/[^/\s]+(?<rest>.*)$" "$method /invite/MASKED$rest";
-#     default $request;
-# }
-# log_format lms_masked '$remote_addr - $remote_user [$time_local] '
-#                        '"$lms_masked_request" $status $body_bytes_sent '
-#                        '"$http_referer" "$http_user_agent"';
-#
-# и использовать в этом server-блоке: access_log /var/log/nginx/lms.access.log lms_masked;
-#
-# Известное ограничение (открытая задача SEC-07, см. additions.md): это
-# маскирование не действует на error_log — там Nginx сам пишет полную
-# строку запроса при ошибках апстрима (502/504 и т.п.), и токен может туда
-# попасть. Решается переносом токена из пути в тело запроса на клиенте
-# и сервере, что ещё не сделано.

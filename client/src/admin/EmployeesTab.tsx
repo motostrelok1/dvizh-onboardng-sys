@@ -48,7 +48,7 @@ export function EmployeesTab() {
 
   async function issueInvitation(id: string) {
     const d = await api.post<{ link: string }>(`/admin/users/${id}/invitations`);
-    // Сервер отдаёт относительный путь (/invite/<токен>) — для отправки
+    // Сервер отдаёт относительный путь (/invite#<токен>) — для отправки
     // сотруднику нужна полная ссылка на домен, где развёрнуто приложение.
     const fullLink = new URL(d.link, window.location.origin).toString();
     setInviteLinks((m) => ({ ...m, [id]: fullLink }));

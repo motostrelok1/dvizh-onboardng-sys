@@ -34,9 +34,10 @@ function setSessionCookie(reply: any, token: string) {
 
 export async function authRoutes(app: FastifyInstance) {
   // Проверить ссылку-приглашение (для экрана «задать пароль»)
-  app.get<{ Params: { token: string } }>("/auth/invitations/:token", { onRequest: limitInvitationLookup }, async (req, reply) => {
-    if (!validToken(req.params.token)) return reply.code(400).send({ error: "invalid_request" });
-    const status = await getInvitationStatus(req.params.token);
+  app.post<{ Body: unknown }>("/auth/invitations/check", { onRequest: limitInvitationLookup, bodyLimit: 8 * 1024 }, async (req, reply) => {
+    const token = bodyObject(req.body)?.token;
+    if (typeof token !== "string" || !validToken(token)) return reply.code(400).send({ error: "invalid_request" });
+    const status = await getInvitationStatus(token);
     if (!status.valid) {
       reply.code(404);
       return { valid: false, reason: status.reason };
@@ -45,19 +46,19 @@ export async function authRoutes(app: FastifyInstance) {
   });
 
   // Принять приглашение: задать пароль, сразу войти
-  app.post<{ Params: { token: string }; Body: unknown }>(
-    "/auth/invitations/:token/accept",
+  app.post<{ Body: unknown }>(
+    "/auth/invitations/accept",
     { onRequest: limitAuthIp, bodyLimit: 8 * 1024 },
     async (req, reply) => {
-      const token = req.params.token;
-      if (!validToken(token)) return reply.code(400).send({ error: "invalid_request" });
+      const body = bodyObject(req.body);
+      const token = body?.token;
+      if (typeof token !== "string" || !validToken(token)) return reply.code(400).send({ error: "invalid_request" });
       if (!await enforceAuthLimit(req, reply, "invitation_token", token, AUTH_ACCOUNT_MAX)) return;
       const invitation = await pool.query<{ user_id: string }>(
         `select user_id from invitations where token_hash = $1 and used_at is null
          and revoked_at is null and expires_at > now()`, [hashToken(token)]);
       if (invitation.rows[0] && !await enforceAuthLimit(req, reply, "invitation_account",
         invitation.rows[0].user_id, AUTH_ACCOUNT_MAX)) return;
-      const body = bodyObject(req.body);
       if (!body || typeof body.password !== "string") return reply.code(400).send({ error: "invalid_request" });
       if (body.password.length < 8) {
         reply.code(400);

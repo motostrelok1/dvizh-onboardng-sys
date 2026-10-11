@@ -19,6 +19,8 @@ const { SESSION_COOKIE } = await import("../src/auth/constants.ts");
 const { adminAttachmentRoutes } = await import("../src/routes/admin-attachments.ts");
 const { ensureLessonDir, UPLOAD_DIR } = await import("../src/storage.ts");
 const app = Fastify();
+const { installPrivacyHeaders } = await import("../src/privacy.ts");
+installPrivacyHeaders(app);
 let adminId;
 let employeeId;
 let courseId;
@@ -127,6 +129,8 @@ test("upload uses a private UUID filename and preserves the display name", async
   assert.deepEqual(download.rawPayload, PDF);
   assert.equal(download.headers["content-type"], "application/pdf");
   assert.equal(download.headers["x-content-type-options"], "nosniff");
+  assert.equal(download.headers["cache-control"], "no-store");
+  assert.equal(download.headers["referrer-policy"], "no-referrer");
   assert.ok(download.headers["content-disposition"].includes(encodeURIComponent("пособие.pdf")));
 });
 

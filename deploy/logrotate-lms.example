@@ -1,0 +1,17 @@
+# Install as /etc/logrotate.d/lms; logs are readable only by root/adm.
+/var/log/nginx/lms.access.log /var/log/nginx/lms.error.log {
+    daily
+    rotate 7
+    maxage 7
+    missingok
+    notifempty
+    compress
+    delaycompress
+    create 0640 www-data adm
+    sharedscripts
+    postrotate
+        if [ -r /run/nginx.pid ]; then
+            kill -USR1 "$(cat /run/nginx.pid)"
+        fi
+    endscript
+}

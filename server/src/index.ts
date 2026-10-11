@@ -1,5 +1,6 @@
 import "dotenv/config";
 import Fastify from "fastify";
+import { installPrivacyHeaders, privateLogger } from "./privacy.js";
 import cookie from "@fastify/cookie";
 import multipart from "@fastify/multipart";
 import { checkDb, pool } from "./db.js";
@@ -23,7 +24,8 @@ import { notificationRoutes, publicPushRoutes } from "./routes/notifications.js"
 import { startNotificationScheduler } from "./jobs/notifications.js";
 import { startDeadlineChecker } from "./jobs/deadlines.js";
 
-const app = Fastify({ logger: true });
+const app = Fastify({ logger: privateLogger });
+installPrivacyHeaders(app);
 
 await app.register(cookie);
 await app.register(multipart);

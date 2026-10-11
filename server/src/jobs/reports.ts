@@ -155,7 +155,7 @@ export function startReportScheduler(checkIntervalMs = 5 * 60_000) {
         await ensureReportsUpToYesterday("schedule");
       }
     } catch (err) {
-      console.error("Ошибка планового формирования отчёта:", err);
+      console.error("Ошибка планового формирования отчёта");
     }
   };
   check();
