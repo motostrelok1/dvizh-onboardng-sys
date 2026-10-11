@@ -10,9 +10,10 @@
 - [x] 12.5 Ссылка-приглашение в админке (полная ссылка + «копировать»)
 - [x] 12.6 Деплой: nginx.conf.example, lms.service, deploy.sh
 - [x] 12.7 Бэкап: backup.sh (pg_dump + uploads), проверка восстановления
-- [ ] 12.8 Сборка и проверка: typecheck, build, запуск, ручной прогон
+- [x] 12.8 Сборка и проверка: typecheck, build, запуск, ручной прогон
 
 ## Журнал (что взял в работу / что сделал)
+- 2026-10-11: 12.8 сделано — server build (tsc) и client build (tsc+vite+sw) чистые. Сквозной прогон: сервер поднят, /health и /health/db ok; выпуск приглашения (npm run invite), GET статуса ссылки, accept с установкой пароля, сессия по cookie, /auth/me, повторный вход по email/паролю — всё отработало. Статика client/dist: index.html с нужным title, manifest.webmanifest валиден, sw.js отдаётся, иконки 192/512 доступны, SPA fallback на /invite/<токен> подтверждён (через vite dev в 12.4). Этап 12 завершён полностью.
 - 2026-10-11: 12.7 сделано — deploy/backup.sh (pg_dump --format=custom + tar uploads, ротация по KEEP_DAYS, инструкция восстановления в комментарии). Проверено вживую: подняты Postgres+миграции, посеян админ, добавлен тестовый файл в uploads, снят бэкап, восстановлен в чистую БД lms_restore_check через pg_restore (данные дошли) и tar -xzf (файл вложения дошёл и читается). Тестовая БД и файлы удалены после проверки.
 - 2026-10-11: 12.6 сделано — deploy/nginx.conf.example (статика client/dist, прокси /api на 127.0.0.1:3000, no-cache на index.html/sw.js/manifest, client_max_body_size 55m, deny скрытых файлов, заготовка map для маскирования токена в access_log + пометка про нерешённый SEC-07 в error_log), deploy/lms.service (systemd, ProtectSystem=strict), deploy/deploy.sh (git pull, npm ci, миграции, сборка server/client, rsync в WEB_ROOT, restart, health-check). Синтаксис deploy.sh проверен (bash -n).
 - 2026-10-11: 12.5 сделано — EmployeesTab.tsx: ссылка из API (относительный путь) превращается в полный URL (new URL(link, location.origin)) перед показом, кнопка «Копировать» через navigator.clipboard с фолбэком (текст и так виден) и индикацией «Скопировано». Сборка прошла.
