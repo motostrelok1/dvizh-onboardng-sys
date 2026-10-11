@@ -3,9 +3,13 @@
 ## Запуск (разработка)
 
 ```bash
-docker compose up -d          # поднять PostgreSQL
+# В корне создать .env со строкой POSTGRES_PASSWORD=<сильный_уникальный_пароль>
+# Файл .env не коммитить; пароль не должен содержать переводы строк.
+docker compose up -d          # PostgreSQL доступен только на 127.0.0.1:5432
 
 cp server/.env.example server/.env
+# В server/.env заменить REPLACE_WITH_URL_ENCODED_PASSWORD тем же паролем,
+# URL-кодируя специальные символы (например @ как %40, # как %23).
 cd server && npm install
 npm run migrate               # создать таблицы
 npm run dev                   # http://localhost:3000/health
