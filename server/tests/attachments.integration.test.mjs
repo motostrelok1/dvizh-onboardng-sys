@@ -7,6 +7,8 @@ import { after, afterEach, before, beforeEach, test } from "node:test";
 import Fastify from "fastify";
 import cookie from "@fastify/cookie";
 import multipart from "@fastify/multipart";
+import { attachmentContentType } from "../src/file-content.ts";
+import { DOC, DOCX, JPEG, PDF, PNG, XLS, XLSX, zip } from "./file-fixtures.mjs";
 
 await import("./test-database.mjs");
 const scratch = await mkdtemp(join(tmpdir(), "lms-attachment-test-"));
@@ -63,10 +65,11 @@ after(async () => {
   }
 });
 
-function upload({ id = lessonId, filename = "пособие.pdf", content = Buffer.from("%PDF-1.4\nCI file"), cookies = adminCookies } = {}) {
+function upload({ id = lessonId, filename = "пособие.pdf", content = PDF, cookies = adminCookies,
+  mime = attachmentContentType(filename) } = {}) {
   const boundary = "lms-ci-multipart-boundary";
   const payload = Buffer.concat([
-    Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${filename}"\r\nContent-Type: application/pdf\r\n\r\n`),
+    Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${filename}"\r\nContent-Type: ${mime}\r\n\r\n`),
     content,
     Buffer.from(`\r\n--${boundary}--\r\n`)
   ]);
@@ -116,12 +119,14 @@ test("upload uses a private UUID filename and preserves the display name", async
   assert.equal(attachment.file_name, "пособие.pdf");
   assert.match(basename(attachment.file_path), /^[0-9a-f-]{36}\.pdf$/);
   assert.equal(dirname(attachment.file_path), join(UPLOAD_DIR, "lessons", lessonId));
-  assert.equal(await readFile(attachment.file_path, "utf8"), "%PDF-1.4\nCI file");
+  assert.deepEqual(await readFile(attachment.file_path), PDF);
   assert.equal((await lstat(attachment.file_path)).mode & 0o777, 0o600);
   assert.equal(await attachmentCount(), 1);
   const download = await app.inject({ url: `/attachments/${attachment.id}/download`, cookies: adminCookies });
   assert.equal(download.statusCode, 200);
-  assert.equal(download.body, "%PDF-1.4\nCI file");
+  assert.deepEqual(download.rawPayload, PDF);
+  assert.equal(download.headers["content-type"], "application/pdf");
+  assert.equal(download.headers["x-content-type-options"], "nosniff");
   assert.ok(download.headers["content-disposition"].includes(encodeURIComponent("пособие.pdf")));
 });
 
@@ -155,7 +160,7 @@ test("download requires course access and an assigned employee can download", as
   await pool.query("insert into assignments (user_id, course_id) values ($1, $2)", [employeeId, courseId]);
   const allowed = await app.inject({ url: `/attachments/${id}/download`, cookies: employeeCookies });
   assert.equal(allowed.statusCode, 200);
-  assert.equal(allowed.body, "%PDF-1.4\nCI file");
+  assert.deepEqual(allowed.rawPayload, PDF);
 });
 
 test("ordinary legacy attachments still download and delete", async () => {
@@ -204,4 +209,58 @@ test("an oversized upload leaves no attachment or partial file", async () => {
     throw error;
   });
   assert.deepEqual(files, []);
+});
+
+test("each allowed format uploads and downloads with a fixed server MIME and nosniff", async () => {
+  for (const [extension, content] of Object.entries({ pdf: PDF, doc: DOC, docx: DOCX, xls: XLS,
+    xlsx: XLSX, png: PNG, jpg: JPEG, jpeg: JPEG })) {
+    const filename = `sample.${extension.toUpperCase()}`;
+    const response = await upload({ filename, content });
+    assert.equal(response.statusCode, 201, `${extension}: ${response.body}`);
+    const id = response.json().attachment.id;
+    const download = await app.inject({ url: `/attachments/${id}/download`, cookies: adminCookies });
+    assert.equal(download.statusCode, 200);
+    assert.deepEqual(download.rawPayload, content);
+    assert.equal(download.headers["content-type"], attachmentContentType(filename));
+    assert.equal(download.headers["x-content-type-options"], "nosniff");
+    assert.ok(download.headers["content-disposition"].startsWith("attachment;"));
+  }
+  assert.equal(await attachmentCount(), 8);
+});
+
+test("renamed HTML, mismatched formats and fake Office uploads leave no record or file", async () => {
+  for (const [filename, content] of [
+    ["malicious.pdf", Buffer.from('<html><script>alert(1)</script></html>')],
+    ["image.pdf", PNG], ["document.png", PDF],
+    ["fake.docx", zip({ "word/fake.xml": "not Office" })], ["renamed.xlsx", DOCX],
+    ["empty.jpg", Buffer.alloc(0)], ["broken.pdf", PDF.subarray(0, 24)]
+  ]) {
+    const response = await upload({ filename, content });
+    assert.equal(response.statusCode, 400, response.body);
+    assert.deepEqual(response.json(), { error: "file_content_not_allowed" });
+    assert.equal(await attachmentCount(), 0);
+    assert.deepEqual(await readdir(join(UPLOAD_DIR, "lessons", lessonId)), []);
+  }
+});
+
+test("client MIME cannot authorize bytes and a recognized conflicting MIME is rejected", async () => {
+  const conflicting = await upload({ filename: "image.png", content: PNG, mime: "application/pdf" });
+  assert.equal(conflicting.statusCode, 400);
+  assert.equal(await attachmentCount(), 0);
+  assert.deepEqual(await readdir(join(UPLOAD_DIR, "lessons", lessonId)), []);
+  const generic = await upload({ mime: "application/octet-stream" });
+  assert.equal(generic.statusCode, 201);
+  const fake = await upload({ filename: "fake.pdf", content: Buffer.from("MZ executable"), mime: "application/pdf" });
+  assert.equal(fake.statusCode, 400);
+  assert.equal(await attachmentCount(), 1);
+});
+
+test("a stored upload has no public static API URL", async () => {
+  const response = await upload();
+  assert.equal(response.statusCode, 201);
+  const file = basename(response.json().attachment.file_path);
+  for (const url of [`/uploads/lessons/${lessonId}/${file}`, `/lessons/${lessonId}/${file}`]) {
+    assert.equal((await app.inject({ url })).statusCode, 404);
+    assert.equal((await app.inject({ url, cookies: adminCookies })).statusCode, 404);
+  }
 });
