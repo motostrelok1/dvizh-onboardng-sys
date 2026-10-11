@@ -20,9 +20,10 @@ export type EventType =
 export async function logEvent(
   userId: string,
   eventType: EventType,
-  opts: { entityType?: string; entityId?: string | null; payload?: Record<string, unknown>; occurredAt?: Date } = {}
+  opts: { entityType?: string; entityId?: string | null; payload?: Record<string, unknown>; occurredAt?: Date } = {},
+  executor: { query: typeof pool.query } = pool
 ) {
-  await pool.query(
+  await executor.query(
     `insert into events (user_id, event_type, entity_type, entity_id, payload, occurred_at)
      values ($1, $2, $3, $4, $5, $6)`,
     [

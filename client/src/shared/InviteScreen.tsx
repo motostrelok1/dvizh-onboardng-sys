@@ -13,6 +13,7 @@ const REASON_TEXT: Record<string, string> = {
   not_found: "Ссылка-приглашение не найдена.",
   expired: "Срок действия ссылки истёк.",
   used: "Эта ссылка уже использована.",
+  revoked: "Ссылка отозвана. Используйте последнюю ссылку от администратора.",
   inactive: "Учётная запись отключена — обратитесь к администратору."
 };
 
@@ -65,6 +66,9 @@ export function InviteScreen({ token, onLogin }: { token: string; onLogin: (u: S
       const message = err instanceof Error ? err.message : "";
       setError(message === "rate_limited"
         ? "Слишком много попыток. Подождите до 10 минут и попробуйте снова."
+        : message === "invitation_inactive" ? REASON_TEXT.inactive
+        : message === "invitation_revoked" ? REASON_TEXT.revoked
+        : message === "invitation_used" ? REASON_TEXT.used
         : message === "password_too_long" ? "Пароль слишком длинный: максимум 72 байта."
         : message || "Не удалось задать пароль");
       setSubmitting(false);
