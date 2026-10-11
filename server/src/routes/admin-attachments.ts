@@ -8,6 +8,7 @@ import {
 } from "../storage.js";
 import { checkCourseAccess, getCourseIdForAttachment } from "../access.js";
 import { logEvent } from "../events.js";
+import { attachmentContentType, hasAllowedFileContent } from "../file-content.js";
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 МБ — стартовый лимит, см. SPEC §18
 
@@ -33,7 +34,8 @@ export async function adminAttachmentRoutes(app: FastifyInstance) {
         return { error: "file_required" };
       }
 
-      if (!allowedExtension(file.filename)) {
+      const extension = allowedExtension(file.filename);
+      if (!extension) {
         reply.code(400);
         return { error: "file_type_not_allowed", allowed: ALLOWED_EXTENSIONS };
       }
@@ -49,6 +51,13 @@ export async function adminAttachmentRoutes(app: FastifyInstance) {
         if (file.file.truncated) {
           reply.code(400);
           return { error: "file_too_large", maxBytes: MAX_FILE_SIZE };
+        }
+
+        // The multipart MIME is supplied by the client and cannot authorize a
+        // format. Inspect the private completed file before inserting its row.
+        if (!await hasAllowedFileContent(diskPath, extension, file.mimetype)) {
+          reply.code(400);
+          return { error: "file_content_not_allowed" };
         }
 
         const posRes = await pool.query(
@@ -120,6 +129,8 @@ export async function adminAttachmentRoutes(app: FastifyInstance) {
           "Content-Disposition",
           `attachment; filename="${encodeURIComponent(row.file_name)}"`
         );
+        reply.type(attachmentContentType(row.file_path));
+        reply.header("X-Content-Type-Options", "nosniff");
         return reply.send(handle.createReadStream());
       } catch (error) {
         await handle.close();
