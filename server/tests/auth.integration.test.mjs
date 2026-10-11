@@ -4,6 +4,7 @@ import { readdir } from "node:fs/promises";
 import { after, afterEach, before, beforeEach, test } from "node:test";
 import Fastify from "fastify";
 import cookie from "@fastify/cookie";
+import { privateLogger, installPrivacyHeaders } from "../src/privacy.ts";
 
 await import("./test-database.mjs");
 
@@ -16,7 +17,9 @@ const { authRoutes } = await import("../src/routes/auth.ts");
 const { adminUserRoutes } = await import("../src/routes/admin-users.ts");
 const { meRoutes } = await import("../src/routes/me.ts");
 
-const app = Fastify();
+const requestLogs = [];
+const app = Fastify({ logger: { ...privateLogger, stream: { write: value => requestLogs.push(value) } } });
+installPrivacyHeaders(app);
 const password = "test-password-123";
 let passwordHash;
 let employee;
@@ -41,6 +44,7 @@ before(async () => {
 });
 
 beforeEach(async () => {
+  requestLogs.length = 0;
   userIds = [randomUUID(), randomUUID()];
   courseIds = [];
   const result = await pool.query(
@@ -85,8 +89,8 @@ async function invite() {
 function accept(token, suppliedPassword = password) {
   return app.inject({
     method: "POST",
-    url: `/auth/invitations/${token}/accept`,
-    payload: { password: suppliedPassword }
+    url: "/auth/invitations/accept",
+    payload: { token, password: suppliedPassword }
   });
 }
 
@@ -208,7 +212,7 @@ test("an invitation can be accepted once and creates a usable session", async ()
   const { token } = await invite();
   const stored = await pool.query("select token_hash from invitations where user_id = $1", [employee.id]);
   assert.equal(stored.rows[0].token_hash, hashToken(token));
-  const status = await app.inject({ url: `/auth/invitations/${token}` });
+  const status = await app.inject({ method: "POST", url: "/auth/invitations/check", payload: { token } });
   assert.equal(status.statusCode, 200);
   assert.equal(status.json().valid, true);
   const response = await accept(token);
@@ -220,6 +224,49 @@ test("an invitation can be accepted once and creates a usable session", async ()
   assert.equal(repeated.statusCode, 400);
   assert.deepEqual(repeated.json(), { error: "invitation_used" });
   assert.equal((await pool.query("select id from sessions where user_id = $1", [employee.id])).rowCount, 1);
+  for (const result of [status, response, repeated]) {
+    assert.equal(result.headers["cache-control"], "no-store");
+    assert.equal(result.headers["referrer-policy"], "no-referrer");
+  }
+  const recorded = requestLogs.join("");
+  assert.ok(recorded.includes("incoming request") && recorded.includes("request completed"));
+  for (const secret of [token, session.value, password, employee.email]) assert.ok(!recorded.includes(secret), secret);
+});
+
+test("invitation API rejects missing, non-string and malformed body tokens", async () => {
+  for (const token of [undefined, null, [], {}, 42, "!bad", "a".repeat(129)]) {
+    for (const action of ["check", "accept"]) {
+      const response = await app.inject({ method: "POST", url: `/auth/invitations/${action}`,
+        remoteAddress: "198.19.0.1", payload: { token, password } });
+      assert.equal(response.statusCode, 400);
+      assert.equal(response.headers["cache-control"], "no-store");
+    }
+  }
+  assert.equal((await pool.query("select id from sessions where user_id = $1", [employee.id])).rowCount, 0);
+});
+
+test("retired token-in-path API cannot accept an invitation or expose it in logs", async () => {
+  const { token } = await invite();
+  for (const request of [
+    { url: `/auth/invitations/${token}?token=${token}` },
+    { method: "POST", url: `/auth/invitations/${token}/accept`, payload: { password } }
+  ]) {
+    const response = await app.inject(request);
+    assert.equal(response.statusCode, 404);
+    assert.equal(response.headers["cache-control"], "no-store");
+  }
+  assert.ok(!requestLogs.join("").includes(token));
+  assert.equal((await pool.query("select used_at from invitations where user_id = $1", [employee.id])).rows[0].used_at, null);
+});
+
+test("admin invitation link uses a fragment and its sensitive response is not cached", async () => {
+  const response = await app.inject({ method: "POST", url: `/admin/users/${employee.id}/invitations`,
+    cookies: await sessionCookies(admin) });
+  assert.equal(response.statusCode, 200);
+  const { token, link } = response.json();
+  assert.equal(link, `/invite#${token}`);
+  assert.equal(response.headers["cache-control"], "no-store");
+  assert.ok(!requestLogs.join("").includes(token));
 });
 
 test("a revoked invitation cannot be accepted", async () => {

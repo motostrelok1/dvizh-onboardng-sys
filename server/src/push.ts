@@ -34,7 +34,7 @@ export async function sendPushToUser(userId: string, payload: { title: string; b
       if (err.statusCode === 404 || err.statusCode === 410) {
         await pool.query(`delete from push_subscriptions where id = $1`, [sub.id]);
       } else {
-        console.error("Ошибка отправки push:", err.message);
+        console.error("Ошибка отправки push");
       }
     }
   }

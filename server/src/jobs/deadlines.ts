@@ -28,7 +28,7 @@ export async function closeOverdueAssignments(): Promise<number> {
 export function startDeadlineChecker(intervalMs = 60_000) {
   const run = () => {
     closeOverdueAssignments().catch((err) => {
-      console.error("Ошибка проверки дедлайнов:", err);
+      console.error("Ошибка проверки дедлайнов");
     });
   };
   run(); // сразу при старте, не дожидаясь первого интервала

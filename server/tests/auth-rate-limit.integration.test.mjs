@@ -4,6 +4,7 @@ import { Writable } from "node:stream";
 import { after, afterEach, before, beforeEach, test } from "node:test";
 import Fastify from "fastify";
 import cookie from "@fastify/cookie";
+import { installPrivacyHeaders } from "../src/privacy.ts";
 
 await import("./test-database.mjs");
 const { pool } = await import("../src/db.ts");
@@ -16,6 +17,7 @@ const password = "CI-test-password";
 const logs = [];
 const stream = new Writable({ write(chunk, _encoding, done) { logs.push(String(chunk)); done(); } });
 const apps = [Fastify({ logger: { stream }, disableRequestLogging: true }), Fastify()];
+for (const app of apps) installPrivacyHeaders(app);
 let passwordHash, userId, email, sequence = 0, keys;
 
 before(async () => {
@@ -59,10 +61,12 @@ async function invitation() {
 function accept(token, suppliedPassword = "short", remote = ip(), app = apps[0]) {
   remember("action_ip", remote);
   remember("invitation_token", token);
-  return app.inject({ method: "POST", url: `/auth/invitations/${token}/accept`, remoteAddress: remote,
-    payload: { password: suppliedPassword } });
+  return app.inject({ method: "POST", url: "/auth/invitations/accept", remoteAddress: remote,
+    payload: { token, password: suppliedPassword } });
 }
 function assertLimited(response) {
+  assert.equal(response.headers["cache-control"], "no-store");
+  assert.equal(response.headers["referrer-policy"], "no-referrer");
   assert.equal(response.statusCode, 429, response.body);
   assert.equal(response.json().error, "rate_limited");
   assert.ok(response.json().retryAfterSeconds > 0 && response.json().retryAfterSeconds <= 600);
@@ -105,6 +109,7 @@ test("concurrent requests and independent app instances share one atomic account
   assert.equal(responses.filter(r => r.statusCode === 429).length, 20 - AUTH_ACCOUNT_MAX);
   assert.equal((await stored("login_account", missing)).attempts, AUTH_ACCOUNT_MAX + 2);
   const freshApp = Fastify();
+  installPrivacyHeaders(freshApp);
   try {
     await freshApp.register(cookie); await freshApp.register(authRoutes);
     assertLimited(await login({ suppliedEmail: missing, app: freshApp, remote: ip(30) }));
@@ -157,7 +162,7 @@ test("changing valid invitation links and IPs does not reset the invited user's 
 test("public invitation lookups are IP-limited separately from acceptance", async () => {
   const token = await invitation();
   remember("invitation_lookup_ip", ip());
-  const request = () => apps[0].inject({ url: `/auth/invitations/${token}`, remoteAddress: ip() });
+  const request = () => apps[0].inject({ method: "POST", url: "/auth/invitations/check", payload: { token }, remoteAddress: ip() });
   for (let i = 0; i < INVITATION_LOOKUP_IP_MAX; i++) assert.equal((await request()).statusCode, 200);
   assertLimited(await request());
   assert.equal((await accept(token, password)).statusCode, 200);

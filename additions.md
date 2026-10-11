@@ -100,6 +100,8 @@ storedFileName добавляет UUID, но оставляет оригинал
 
 **Проверка:** после принятия приглашения сырого токена нет в логах приложения/прокси; приватные ответы не кешируются публично.
 
+**Статус (2026-10-11):** подготовлены fragment-ссылки, POST body token, совместимость старых ссылок, очистка URL, безопасный logger и no-store/no-referrer. Nginx example маскирует access logs и исключает error logs на API/legacy invitation locations; CI проверяет настоящие access/error logs при 404/410/502. Logrotate example ограничивает файлы 7 днями. Применение конфигурации/retention на VDS, старые production-логи и внешняя telemetry остаются отдельной эксплуатационной проверкой; автоматически не менялись.
+
 ### SEC-08 — Повторные приглашения меняют пароль без отзыва старого доступа — P1
 
 **Где:** `server/src/auth/service.ts`, createInvitation/acceptInvitation.

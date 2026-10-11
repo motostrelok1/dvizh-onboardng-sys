@@ -25,8 +25,8 @@ export function InviteScreen({ token, onLogin }: { token: string; onLogin: (u: S
 
   useEffect(() => {
     api
-      .get<{ valid: boolean; reason?: string; fullName?: string; email?: string }>(
-        `/auth/invitations/${encodeURIComponent(token)}`
+      .post<{ valid: boolean; reason?: string; fullName?: string; email?: string }>(
+        "/auth/invitations/check", { token }
       )
       .then((d) => {
         if (d.valid && d.fullName && d.email) {
@@ -57,7 +57,7 @@ export function InviteScreen({ token, onLogin }: { token: string; onLogin: (u: S
     }
     setSubmitting(true);
     try {
-      await api.post<{ ok: true }>(`/auth/invitations/${encodeURIComponent(token)}/accept`, { password });
+      await api.post<{ ok: true }>("/auth/invitations/accept", { token, password });
       const me = await api.get<{ user: SessionUser }>("/auth/me");
       setStatus({ phase: "accepted" });
       onLogin(me.user);

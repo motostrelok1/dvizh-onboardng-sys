@@ -22,7 +22,10 @@ if (import.meta.env.PROD && "serviceWorker" in navigator) {
         const installing = registration.installing;
         if (!installing) return;
         installing.addEventListener("statechange", () => {
-          if (installing.state === "activated" && hadControllerBeforeRegister) {
+          // Invitation credentials now live only in React memory. Reloading
+          // this screen would discard them; the next navigation gets new code.
+          if (installing.state === "activated" && hadControllerBeforeRegister &&
+              !/^\/invite(?:\/|$)/.test(window.location.pathname)) {
             window.location.reload();
           }
         });
