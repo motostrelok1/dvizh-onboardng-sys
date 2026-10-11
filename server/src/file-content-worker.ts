@@ -211,6 +211,22 @@ function jpeg(buffer) {
     if (!/^%PDF-(1\.[0-7]|2\.0)[\r\n]/.test(buffer.subarray(0, 16).toString('ascii')) ||
         !/%%EOF[\x00\t\n\f\r ]*$/.test(buffer.subarray(-1024).toString('latin1'))) return false;
     const { PDFDocument } = require('pdf-lib');
+    // pdf-lib 1.17.1 decoders allocate Uint8Arrays outside the V8 heap limit.
+    // Bound every growth before allocation. This adapter stays worker-local;
+    // the pinned dependency and compressed-PDF regression test are intentional.
+    const DecodeStream = require('pdf-lib/cjs/core/streams/DecodeStream').default;
+    const ensureBuffer = DecodeStream.prototype.ensureBuffer;
+    let allocated = 0;
+    DecodeStream.prototype.ensureBuffer = function(requested) {
+      if (!Number.isSafeInteger(requested) || requested < 0 || requested > 16 * 1024 * 1024) throw new Error('pdf_decode_limit');
+      if (requested > this.buffer.byteLength) {
+        let size = this.minBufferLength;
+        while (size < requested) size *= 2;
+        allocated += size;
+        if (size > 16 * 1024 * 1024 || allocated > 64 * 1024 * 1024) throw new Error('pdf_decode_limit');
+      }
+      return ensureBuffer.call(this, requested);
+    };
     const pdf = await PDFDocument.load(buffer, { ignoreEncryption: false, throwOnInvalidObject: true, updateMetadata: false });
     return pdf.getPageCount() > 0;
   }

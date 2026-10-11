@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { after, test } from "node:test";
 import { hasAllowedFileContent } from "../src/file-content.ts";
 import { DOC, DOCX, JPEG, PDF, PNG, XLS, XLSX, officeParts, zip } from "./file-fixtures.mjs";
+import { PDFDocument } from "pdf-lib";
 
 const scratch = await mkdtemp(join(tmpdir(), "lms-content-test-"));
 let sequence = 0;
@@ -108,4 +109,18 @@ test("a cyclic compound-file sector chain fails closed without blocking the requ
     assert.ok(ticks > 0, "main event loop must stay responsive");
     assert.ok(Date.now() - started < 10_000, "worker must be stopped by its deadline/resource limit");
   } finally { clearInterval(timer); }
+});
+
+test("PDF compressed object streams are bounded before allocating their expanded bytes", async () => {
+  async function compressedPDF(size) {
+    const document = await PDFDocument.create();
+    document.addPage([100, 100]);
+    const content = Buffer.concat([Buffer.from("90 0 "), Buffer.alloc(size, 32), Buffer.from("null")]);
+    document.context.register(document.context.flateStream(content, { Type: "ObjStm", N: 1, First: 5 }));
+    return Buffer.from(await document.save({ useObjectStreams: false }));
+  }
+  assert.equal(await inspect(await compressedPDF(1024), ".pdf"), true);
+  const oversized = await compressedPDF(17 * 1024 * 1024);
+  assert.ok(oversized.length < 32 * 1024, "small upload with large decoded content");
+  assert.equal(await inspect(oversized, ".pdf"), false);
 });

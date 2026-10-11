@@ -11,7 +11,7 @@ export const JPEG = Buffer.from("/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwc
 export function zip(files) {
   const container = CFB.utils.cfb_new();
   for (const [name, content] of Object.entries(files)) CFB.utils.cfb_add(container, name, Buffer.from(content));
-  return CFB.write(container, { type: "buffer", fileType: "zip", compression: true });
+  return Buffer.from(CFB.write(container, { type: "buffer", fileType: "zip", compression: true }));
 }
 
 export function officeParts(kind = "docx") {
@@ -42,7 +42,7 @@ function legacy(kind) {
     const book = Buffer.from([9, 8, 8, 0, 0, 6, 5, 0, 0, 0, 0, 0, 10, 0, 0, 0]);
     CFB.utils.cfb_add(container, "Workbook", book);
   }
-  return CFB.write(container, { type: "buffer" });
+  return Buffer.from(CFB.write(container, { type: "buffer" }));
 }
 
 export const DOC = legacy("doc");
