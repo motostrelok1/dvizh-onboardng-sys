@@ -3,7 +3,7 @@
 Статус: [ ] не начат · [~] в работе · [x] сделано и проверено · [P] запушено
 
 ## Подэтапы
-- [ ] 12.1 Манифест + иконки (client/public/icons, manifest в vite.config)
+- [x] 12.1 Манифест + иконки (client/public/icons, manifest в vite.config)
 - [ ] 12.2 Service worker: precache оболочки (vite-plugin-pwa, injectManifest), push/клик из sw.ts
 - [ ] 12.3 Регистрация SW + баннер «нет сети»
 - [ ] 12.4 Экран приглашения /invite/<токен> (вход по ссылке)
@@ -13,4 +13,5 @@
 - [ ] 12.8 Сборка и проверка: typecheck, build, запуск, ручной прогон
 
 ## Журнал (что взял в работу / что сделал)
+- 2026-10-11: 12.1 сделано — иконки 192/512/512-maskable/apple-touch (PNG, PIL), manifest.webmanifest, ссылки в index.html (manifest, theme-color, apple-touch-icon). Сборка client прошла, манифест в dist/index.html подключён.
 - 2026-10-11: проект восстановлен из GitHub (состояние этапа 11, 14d4073); план составлен.
