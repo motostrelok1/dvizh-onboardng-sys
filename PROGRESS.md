@@ -254,7 +254,10 @@
   Проверки 429/download headers расширены. В CI добавлен реальный Nginx
   с временным upstream для 404/410/502 и анализа access/error logs.
 - Локально: 32/32 тестов без БД, сервер/клиент/PWA и diff --check
-  успешны; PostgreSQL и настоящий Nginx проверяются в CI, результат в PR.
+  успешны. CI на a3ff975: сборка, миграции/повторный запуск, 77/77
+  тестов PostgreSQL/API и реальный Nginx (404/410/502, headers/logs) прошли.
+  PR #8: https://github.com/motostrelok1/dvizh-onboardng-sys/pull/8
+  CI: https://github.com/motostrelok1/dvizh-onboardng-sys/actions/runs/38165125765
 - [ ] Применить vhost/retention на VDS и проверить стороннюю telemetry;
   прежние production-логи не исследованы, deploy.sh vhost не обновляет.
   Разворачивать клиент и сервер вместе; старый API удалён без миграции БД.
