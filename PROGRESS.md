@@ -243,6 +243,19 @@
       их нужно будет воссоздать отдельной задачей, вне этапа 12.
 
 ## Решения и заметки
+### H13 — семантика PATCH (2026-10-12)
+- [x] В admin-users явный departmentId: null очищает отдел, отсутствие
+  сохраняет его; в admin-tests отсутствие maxAttempts сохраняет лимит,
+  явный null включает безлимит. Атомарные SQL CASE без read/modify/write.
+- Добавлено 11 PostgreSQL/API-проверок сохранности полей/credentials,
+  очистки/восстановления, false/0, запрещённого null, отката FK и доступа.
+  Локально сборка сервера/клиента/PWA, 48/48 без БД, синтаксис новых
+  tests и diff --check прошли. CI на c4f7d88: 168/168 без ошибок/пропусков,
+  все миграции/повторный запуск, сервер/клиент/PWA и Nginx прошли.
+  PR #14: https://github.com/motostrelok1/dvizh-onboardng-sys/pull/14
+  CI: https://github.com/motostrelok1/dvizh-onboardng-sys/actions/runs/38207624709
+  Новых миграций нет; VDS/рабочая БД не менялись.
+
 ### H12 — CSRF и canonical origin (2026-10-12)
 - [x] Root guard блокирует unsafe methods при чужом/нет/null/multiple Origin;
   APP_ORIGIN фиксируется из конфигурации, не из Host/Referer/proxy headers.
