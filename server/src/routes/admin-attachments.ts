@@ -1,17 +1,14 @@
 import type { FastifyInstance } from "fastify";
-import { pipeline } from "node:stream/promises";
 import { pool } from "../db.js";
 import { requireAdmin, requireAuth } from "../auth/middleware.js";
 import {
-  ALLOWED_EXTENSIONS, allowedExtension, ensureLessonDir, isValidLessonId,
-  openAttachmentForRead, openNewAttachment, removeAttachmentFile, storedFileName
+  isValidLessonId, openAttachmentForRead, removeAttachmentFile
 } from "../storage.js";
 import { checkCourseAccess, getCourseIdForAttachment } from "../access.js";
 import { logEvent } from "../events.js";
 import { attachmentContentType, hasAllowedFileContent } from "../file-content.js";
 import { installApiValidation, schema, idParams, attachmentDto, okDto, success } from "../api-validation.js";
-
-const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 МБ — стартовый лимит, см. SPEC §18
+import { receiveAttachment, UploadReceiveError } from "../upload-receiver.js";
 
 export async function adminAttachmentRoutes(app: FastifyInstance) {
   installApiValidation(app);
@@ -31,65 +28,64 @@ export async function adminAttachmentRoutes(app: FastifyInstance) {
         return { error: "lesson_not_found" };
       }
 
-      let file;
+      const cleanupFailed = () => req.log.error({ event: "upload", category: "cleanup_failed" }, "operation_failed");
+      let received;
       try {
-        file = await req.file({ limits: { fileSize: MAX_FILE_SIZE } });
-      } catch (err: any) {
-        // Busboy boundary/grammar errors do not always have a status/code.
-        // Classify parser failures here, before any filesystem write; keep
-        // explicit unsupported-media and size-limit responses via the handler.
-        if (err.statusCode === 406 || err.statusCode === 413) throw err;
-        return reply.code(400).send({ error: "invalid_request" });
+        received = await receiveAttachment(req.raw, lessonId, cleanupFailed);
+      } catch (error) {
+        if (error instanceof UploadReceiveError) return reply.code(error.statusCode).send(error.response);
+        throw error;
       }
-      if (!file) {
-        reply.code(400);
-        return { error: "file_required" };
-      }
-
-      const extension = allowedExtension(file.filename);
-      if (!extension) {
-        reply.code(400);
-        return { error: "file_type_not_allowed", allowed: ALLOWED_EXTENSIONS };
-      }
-
-      await ensureLessonDir(lessonId);
-      const { diskPath, handle } = await openNewAttachment(lessonId, storedFileName(file.filename));
-      let persisted = false;
+      const { staged, filename, extension, mimetype, bytesWritten } = received;
+      let persisted = false, commitAttempted = false;
       try {
-        let bytesWritten = 0;
-        file.file.on("data", (chunk: Buffer) => (bytesWritten += chunk.length));
-        await pipeline(file.file, handle.createWriteStream());
-
-        if (file.file.truncated) {
-          reply.code(400);
-          return { error: "file_too_large", maxBytes: MAX_FILE_SIZE };
-        }
-
         // The multipart MIME is supplied by the client and cannot authorize a
         // format. Inspect the private completed file before inserting its row.
-        if (!await hasAllowedFileContent(diskPath, extension, file.mimetype)) {
+        if (!await hasAllowedFileContent(staged.temporaryPath, extension, mimetype)) {
           reply.code(400);
           return { error: "file_content_not_allowed" };
         }
 
-        const posRes = await pool.query(
-          `select coalesce(max(position), -1) + 1 as next from lesson_attachments where lesson_id = $1`,
-          [lessonId]
-        );
-        const res = await pool.query(
-          `insert into lesson_attachments (lesson_id, file_name, file_path, size_bytes, position)
-           values ($1, $2, $3, $4, $5)
-           returning *`,
-          [lessonId, file.filename, diskPath, bytesWritten, posRes.rows[0].next]
-        );
-        persisted = true;
-        reply.code(201);
-        return { attachment: res.rows[0] };
-      } finally {
-        await handle.close();
-        if (!persisted) {
-          await removeAttachmentFile(lessonId, diskPath).catch((error) => app.log.error(error));
+        const client = await pool.connect();
+        let discardClient = false;
+        try {
+          await client.query("begin isolation level read committed");
+          // Do not hold DB locks while receiving/parsing a potentially slow file.
+          // Recheck after validation; block a concurrent lesson/cascade deletion
+          // until publication and the attachment INSERT commit together.
+          const current = await client.query("select id from lessons where id = $1 for key share", [lessonId]);
+          if (!current.rows[0]) {
+            await client.query("rollback");
+            reply.code(404);
+            return { error: "lesson_not_found" };
+          }
+          const posRes = await client.query(
+            `select coalesce(max(position), -1) + 1 as next from lesson_attachments where lesson_id = $1`,
+            [lessonId]
+          );
+          await staged.publish();
+          const res = await client.query(
+            `insert into lesson_attachments (lesson_id, file_name, file_path, size_bytes, position)
+             values ($1, $2, $3, $4, $5) returning *`,
+            [lessonId, filename, staged.diskPath, bytesWritten, posRes.rows[0].next]
+          );
+          commitAttempted = true;
+          await client.query("commit");
+          persisted = true;
+          reply.code(201);
+          return { attachment: res.rows[0] };
+        } catch (error) {
+          try { await client.query("rollback"); }
+          catch { discardClient = true; }
+          // Losing COMMIT's acknowledgement is ambiguous: deleting the file
+          // could break a committed DB row. Retain it for later reconciliation.
+          if (commitAttempted) req.log.error({ event: "upload", category: "commit_uncertain" }, "operation_failed");
+          throw error;
+        } finally {
+          client.release(discardClient);
         }
+      } finally {
+        await staged.cleanup(persisted || commitAttempted).catch(cleanupFailed);
       }
     }
   );

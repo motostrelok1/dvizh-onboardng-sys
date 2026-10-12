@@ -1,5 +1,5 @@
 import { constants } from "node:fs";
-import { lstat, mkdir, open, realpath, unlink } from "node:fs/promises";
+import { link, lstat, mkdir, open, realpath, unlink } from "node:fs/promises";
 import { dirname, extname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { randomUUID } from "node:crypto";
 
@@ -96,6 +96,37 @@ export async function openNewAttachment(lessonId: string, storedName: string) {
   // Never overwrite an existing file or follow a leaf symlink. Linux deployment.
   const handle = await open(diskPath, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o600);
   return { diskPath, handle };
+}
+
+export async function openStagedAttachment(lessonId: string, originalName: string) {
+  const diskPath = attachmentPath(lessonId, storedFileName(originalName));
+  await ensureLessonDir(lessonId);
+  const { diskPath: temporaryPath, handle } = await openNewAttachment(lessonId, `.upload-${randomUUID()}.part`);
+  let published = false;
+  return {
+    handle, temporaryPath, diskPath,
+    async publish() {
+      await assertLessonDirectories(lessonId);
+      const stat = await lstat(temporaryPath);
+      if (!stat.isFile() || stat.isSymbolicLink()) throw new StoragePathError();
+      // Same directory/filesystem: atomic visibility without rename's overwrite.
+      await link(temporaryPath, diskPath);
+      published = true; // Only our successful link may be removed by cleanup.
+      await removeAttachmentFile(lessonId, temporaryPath);
+    },
+    async cleanup(preservePublished = false) {
+      // A failed close must never prevent either unlink attempt. Conversely,
+      // a failed temporary unlink must not prevent removal of our final link.
+      const closed = await Promise.allSettled([handle.close()]);
+      const removed = await Promise.allSettled([
+        removeAttachmentFile(lessonId, temporaryPath),
+        ...(published && !preservePublished ? [removeAttachmentFile(lessonId, diskPath)] : [])
+      ]);
+      if ([...closed, ...removed].some(result => result.status === "rejected")) {
+        throw new Error("upload_cleanup_failed");
+      }
+    }
+  };
 }
 
 export async function openAttachmentForRead(lessonId: string, storedPath: string) {
