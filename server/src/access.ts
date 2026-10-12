@@ -5,14 +5,14 @@ export type AccessResult = { ok: true } | { ok: false; reason: "not_found" | "de
 
 // Админ видит всё. Сотрудник — только курсы, которые ему назначены (и срок
 // ещё не истёк), либо курсы открытого каталога, на которые он уже записался.
-export async function checkCourseAccess(user: PublicUser, courseId: string): Promise<AccessResult> {
+export async function checkCourseAccess(user: PublicUser, courseId: string, executor: DbExecutor = pool): Promise<AccessResult> {
   if (user.role === "admin") return { ok: true };
 
-  const courseRes = await pool.query(`select * from courses where id = $1`, [courseId]);
+  const courseRes = await executor.query(`select * from courses where id = $1`, [courseId]);
   const course = courseRes.rows[0];
   if (!course || course.status === "archived") return { ok: false, reason: "not_found" };
 
-  const assignRes = await pool.query(
+  const assignRes = await executor.query(
     `select *, coalesce(deadline <= clock_timestamp(), false) as deadline_passed
      from assignments where user_id = $1 and course_id = $2`,
     [user.id, courseId]

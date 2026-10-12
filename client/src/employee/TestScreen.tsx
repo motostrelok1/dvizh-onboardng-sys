@@ -13,7 +13,12 @@ const ERROR_MESSAGE: Record<string, string> = {
   not_assigned: "Этот курс вам не назначен.",
   not_enrolled: "Сначала запишитесь на курс из каталога.",
   no_attempts_left: "Попытки закончились.",
-  not_found: "Тест не найден."
+  not_found: "Тест не найден.",
+  test_not_ready: "Тест пока не готов к прохождению. Сообщите администратору.",
+  invalid_question: "Состав теста изменился. Откройте тест заново, чтобы продолжить.",
+  invalid_answer_set: "Варианты ответа изменились. Откройте тест заново, чтобы продолжить.",
+  attempt_already_finished: "Эта попытка уже завершена. Вернитесь к курсу.",
+  not_authenticated: "Войдите в систему заново."
 };
 
 export function TestScreen({ testId, onBack }: { testId: string; onBack: () => void }) {
@@ -22,9 +27,11 @@ export function TestScreen({ testId, onBack }: { testId: string; onBack: () => v
   const [index, setIndex] = useState(0);
   const [selected, setSelected] = useState<Record<string, Set<string>>>({});
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<FinishResult | null>(null);
 
   function start() {
+    setBusy(true);
     setError(null);
     setResult(null);
     api
@@ -37,7 +44,8 @@ export function TestScreen({ testId, onBack }: { testId: string; onBack: () => v
         d.questions.forEach((q) => (initial[q.id] = new Set(q.selectedAnswerIds)));
         setSelected(initial);
       })
-      .catch((e) => setError(e.message));
+      .catch((e) => setError(e.message))
+      .finally(() => setBusy(false));
   }
 
   useEffect(start, [testId]);
@@ -56,17 +64,20 @@ export function TestScreen({ testId, onBack }: { testId: string; onBack: () => v
   }
 
   async function next() {
+    if (busy || !attempt) return;
     const q = questions[index];
-    await api.post(`/attempts/${attempt!.id}/answers`, {
-      questionId: q.id,
-      selectedAnswerIds: Array.from(selected[q.id] ?? [])
-    });
-    if (index < questions.length - 1) {
-      setIndex(index + 1);
-    } else {
-      const r = await api.post<FinishResult>(`/attempts/${attempt!.id}/finish`);
-      setResult(r);
-    }
+    if (!q) return;
+    setBusy(true);
+    try {
+      await api.post(`/attempts/${attempt.id}/answers`, {
+        questionId: q.id,
+        selectedAnswerIds: Array.from(selected[q.id] ?? [])
+      });
+      if (index < questions.length - 1) setIndex(index + 1);
+      else setResult(await api.post<FinishResult>(`/attempts/${attempt.id}/finish`));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "request_failed");
+    } finally { setBusy(false); }
   }
 
   if (error) {
@@ -75,7 +86,7 @@ export function TestScreen({ testId, onBack }: { testId: string; onBack: () => v
         <button onClick={onBack} style={{ marginBottom: 12 }}>
           ← Назад
         </button>
-        <p style={{ color: "crimson" }}>{ERROR_MESSAGE[error] ?? "Не удалось начать тест."}</p>
+        <p style={{ color: "crimson" }}>{ERROR_MESSAGE[error] ?? "Не удалось выполнить запрос. Откройте тест заново, чтобы продолжить."}</p>
       </div>
     );
   }
@@ -93,7 +104,7 @@ export function TestScreen({ testId, onBack }: { testId: string; onBack: () => v
           Результат: {result.score}% (проходной балл {result.passScore}%)
         </p>
         {!result.passed && (
-          <button onClick={start} style={{ marginBottom: 16 }}>
+          <button onClick={start} disabled={busy} style={{ marginBottom: 16 }}>
             Пройти ещё раз
           </button>
         )}
@@ -147,6 +158,7 @@ export function TestScreen({ testId, onBack }: { testId: string; onBack: () => v
           <input
             type={q.multiple ? "checkbox" : "radio"}
             name={q.id}
+            disabled={busy}
             checked={selected[q.id]?.has(a.id) ?? false}
             onChange={() => toggle(q, a.id)}
           />{" "}
@@ -154,7 +166,7 @@ export function TestScreen({ testId, onBack }: { testId: string; onBack: () => v
         </label>
       ))}
 
-      <button onClick={next} style={{ marginTop: 12 }}>
+      <button onClick={next} disabled={busy} style={{ marginTop: 12 }}>
         {index < questions.length - 1 ? "Далее" : "Завершить тест"}
       </button>
     </div>

@@ -57,6 +57,9 @@ beforeEach(async () => {
     ($1, 'lesson', $2, true), ($3, 'module', $4, false)`, [testId, lessonId, moduleTestId, moduleId]);
   await pool.query("insert into questions (id, test_id, text) values ($1, $2, 'CI Question')", [questionId, testId]);
   await pool.query("insert into answers (id, question_id, text, is_correct) values ($1, $2, 'CI Answer', true)", [answerId, questionId]);
+  const moduleQuestion = randomUUID();
+  await pool.query("insert into questions(id,test_id,text) values ($1,$2,'CI Module Question')", [moduleQuestion, moduleTestId]);
+  await pool.query("insert into answers(question_id,text,is_correct) values ($1,'CI Module Answer',true)", [moduleQuestion]);
   await pool.query(`insert into assignments (id, user_id, course_id, assigned_by, deadline)
     values ($1, $2, $3, $4, clock_timestamp() + interval '1 day')`, [assignmentId, employeeId, courseId, adminId]);
   await pool.query(`insert into test_attempts (id, user_id, test_id, attempt_number)

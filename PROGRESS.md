@@ -243,6 +243,30 @@
       их нужно будет воссоздать отдельной задачей, вне этапа 12.
 
 ## Решения и заметки
+### H17 — серверная модель попыток (2026-10-12)
+- Реализованы атомарные start/answer/finish + events, locks сотрудника/теста/
+  попытки и редактора; открытая попытка возобновляется до проверки лимита.
+- Вопрос/варианты проверяются по текущему тесту, UUID нормализуются;
+  grade пересчитывается на сервере при finish, законченный результат неизменен.
+- Политика правок без версионности и «всё или ничего» сохранена по SPEC §3–4.
+  Пустой/некорректный тест не расходует попытку. API DTO и клиентские ошибки/
+  блокировка кнопок во время запроса добавлены.
+- Миграция 1700000015000: номера/one-open UNIQUE и lifecycle/score checks;
+  read-only preflight и deployment описаны в README, автоматических repairs нет.
+- Локально сборка сервер/клиент/PWA и 91/91 без БД прошли.
+  Добавлено 35 проверок (7 без БД, 22 PostgreSQL/API, 6 legacy migration).
+  Проверены limit/resume, чужие/некорректные ID, grade/review, доступ/Origin,
+  frozen finish, rollback events и контролируемые гонки start/finish/answer/
+  editor. Legacy up/down/up сохраняет ID/баллы; конфликты отклоняются.
+- CI на 119c35b: 287/287 без ошибок/пропусков, все миграции и повторный
+  запуск, H15/H17 preflight, сервер/клиент/PWA и Nginx прошли. H17 [x].
+  PR #18: https://github.com/motostrelok1/dvizh-onboardng-sys/pull/18
+  CI: https://github.com/motostrelok1/dvizh-onboardng-sys/actions/runs/38239012004
+- Перед deployment нужна миграция 1700000015000, backup/окно обслуживания,
+  обновление всех backend/клиента вместе. VDS/рабочая БД не менялись;
+  request/event dedup остаётся DEV-10.
+
+
 ### H15 — целостность данных (2026-10-12)
 - [x] Миграция 1700000014000: UNIQUE tests(scope,parent_id), generated FK
   к модулю/уроку с cascade; nonnegative/unique positions у module/lesson/

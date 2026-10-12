@@ -3,7 +3,7 @@ import { pool } from "../db.js";
 import { requireAdmin } from "../auth/middleware.js";
 import { installApiValidation, schema, object, text, boolean, uuid, idParams,
   testDto, questionDto, answerDto, okDto, success } from "../api-validation.js";
-import { IntegrityError, withTransaction, lockOrderingParent, nextPosition } from "../data-integrity.js";
+import { IntegrityError, withTransaction, lockOrderingParent, nextPosition, lockTestContent } from "../data-integrity.js";
 
 export async function adminTestRoutes(app: FastifyInstance) {
   installApiValidation(app);
@@ -129,17 +129,20 @@ export async function adminTestRoutes(app: FastifyInstance) {
       idParams(), success({ question: questionDto })) },
     async (req) => {
       const { text, multiple } = req.body;
-      const res = await pool.query(
-        `update questions set text = coalesce($2, text), multiple = coalesce($3, multiple)
-         where id = $1 returning *`,
-        [req.params.id, text, multiple]
-      );
+      const res = await withTransaction(async client => {
+        await lockTestContent(client, "question", req.params.id);
+        return client.query(`update questions set text = coalesce($2, text), multiple = coalesce($3, multiple)
+          where id = $1 returning *`, [req.params.id, text, multiple]);
+      });
       return { question: res.rows[0] };
     }
   );
 
   app.delete<{ Params: { id: string } }>("/admin/questions/:id", { schema: schema(undefined, idParams(), { "2xx": okDto }) }, async (req) => {
-    await pool.query(`delete from questions where id = $1`, [req.params.id]);
+    await withTransaction(async client => {
+      await lockTestContent(client, "question", req.params.id);
+      await client.query("delete from questions where id=$1", [req.params.id]);
+    });
     return { ok: true };
   });
 
@@ -154,10 +157,11 @@ export async function adminTestRoutes(app: FastifyInstance) {
         reply.code(400);
         return { error: "text_required" };
       }
-      const res = await pool.query(
-        `insert into answers (question_id, text, is_correct) values ($1, $2, $3) returning *`,
-        [req.params.questionId, req.body.text, req.body.isCorrect ?? false]
-      );
+      const res = await withTransaction(async client => {
+        await lockTestContent(client, "question", req.params.questionId);
+        return client.query(`insert into answers (question_id, text, is_correct) values ($1, $2, $3) returning *`,
+          [req.params.questionId, req.body.text, req.body.isCorrect ?? false]);
+      });
       reply.code(201);
       return { answer: res.rows[0] };
     }
@@ -169,17 +173,20 @@ export async function adminTestRoutes(app: FastifyInstance) {
       idParams(), success({ answer: answerDto })) },
     async (req) => {
       const { text, isCorrect } = req.body;
-      const res = await pool.query(
-        `update answers set text = coalesce($2, text), is_correct = coalesce($3, is_correct)
-         where id = $1 returning *`,
-        [req.params.id, text, isCorrect]
-      );
+      const res = await withTransaction(async client => {
+        await lockTestContent(client, "answer", req.params.id);
+        return client.query(`update answers set text = coalesce($2, text), is_correct = coalesce($3, is_correct)
+          where id = $1 returning *`, [req.params.id, text, isCorrect]);
+      });
       return { answer: res.rows[0] };
     }
   );
 
   app.delete<{ Params: { id: string } }>("/admin/answers/:id", { schema: schema(undefined, idParams(), { "2xx": okDto }) }, async (req) => {
-    await pool.query(`delete from answers where id = $1`, [req.params.id]);
+    await withTransaction(async client => {
+      await lockTestContent(client, "answer", req.params.id);
+      await client.query("delete from answers where id=$1", [req.params.id]);
+    });
     return { ok: true };
   });
 }

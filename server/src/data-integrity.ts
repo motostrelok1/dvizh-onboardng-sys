@@ -8,15 +8,18 @@ export class IntegrityError extends Error {
 export async function withTransaction<T>(work: (client: PoolClient) => Promise<T>): Promise<T> {
   const client = await pool.connect();
   let discard = false;
+  const onError = () => { discard = true; };
+  client.on("error", onError);
   try {
     await client.query("begin isolation level read committed");
     const result = await work(client);
+    if (discard) throw new Error("transaction_connection_lost");
     await client.query("commit");
     return result;
   } catch (error) {
     try { await client.query("rollback"); } catch { discard = true; }
     throw error;
-  } finally { client.release(discard); }
+  } finally { client.removeListener("error", onError); client.release(discard); }
 }
 
 const ORDERED = {
@@ -30,6 +33,17 @@ type OrderedTable = keyof typeof ORDERED;
 export async function lockOrderingParent(client: PoolClient, table: OrderedTable, parentId: string) {
   const res = await client.query(`select id from ${ORDERED[table].parent} where id = $1 for no key update`, [parentId]);
   if (!res.rows[0]) throw new IntegrityError(404);
+}
+
+// All editor changes to question/answer content lock the owning test first,
+// matching the SHARE lock used by short attempt requests.
+export async function lockTestContent(client: PoolClient, entity: "question" | "answer", id: string) {
+  const sql = entity === "question" ? "select test_id from questions where id=$1" :
+    "select q.test_id from answers a join questions q on q.id=a.question_id where a.id=$1";
+  const parent = (await client.query(sql, [id])).rows[0];
+  if (!parent) throw new IntegrityError(404);
+  await lockOrderingParent(client, "questions", parent.test_id);
+  if (!(await client.query(sql, [id])).rows[0]) throw new IntegrityError(404);
 }
 
 // Caller must hold the parent lock until COMMIT. Identifiers come only from
