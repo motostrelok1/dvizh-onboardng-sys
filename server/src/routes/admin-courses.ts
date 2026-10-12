@@ -1,8 +1,13 @@
 import type { FastifyInstance } from "fastify";
 import { pool } from "../db.js";
 import { requireAdmin } from "../auth/middleware.js";
+import { installApiValidation, schema, object, text, uuid, idParams } from "../api-validation.js";
+import { withTransaction, lockOrderingParent, nextPosition, reorderChildren } from "../data-integrity.js";
+
+const orderIds = { type: "array", items: uuid, uniqueItems: true, maxItems: 10000 };
 
 export async function adminCourseRoutes(app: FastifyInstance) {
+  installApiValidation(app);
   app.addHook("preHandler", requireAdmin);
 
   // --- Курсы ---
@@ -106,22 +111,20 @@ export async function adminCourseRoutes(app: FastifyInstance) {
 
   app.post<{ Params: { courseId: string }; Body: { title: string } }>(
     "/admin/courses/:courseId/modules",
+    { schema: schema(object({ title: text(1000) }, ["title"]), idParams("courseId")) },
     async (req, reply) => {
       if (!req.body?.title) {
         reply.code(400);
         return { error: "title_required" };
       }
-      const posRes = await pool.query(
-        `select coalesce(max(position), -1) + 1 as next from modules where course_id = $1`,
-        [req.params.courseId]
-      );
-      const res = await pool.query(
-        `insert into modules (course_id, title, position) values ($1, $2, $3)
-         returning *`,
-        [req.params.courseId, req.body.title, posRes.rows[0].next]
-      );
+      const module = await withTransaction(async client => {
+        await lockOrderingParent(client, "modules", req.params.courseId);
+        const position = await nextPosition(client, "modules", req.params.courseId);
+        return (await client.query(`insert into modules (course_id, title, position)
+          values ($1, $2, $3) returning *`, [req.params.courseId, req.body.title, position])).rows[0];
+      });
       reply.code(201);
-      return { module: res.rows[0] };
+      return { module };
     }
   );
 
@@ -141,8 +144,9 @@ export async function adminCourseRoutes(app: FastifyInstance) {
   // Переставить модули курса в указанном порядке
   app.post<{ Body: { courseId: string; orderedIds: string[] } }>(
     "/admin/modules/reorder",
+    { schema: schema(object({ courseId: uuid, orderedIds: orderIds }, ["courseId", "orderedIds"])) },
     async (req) => {
-      await reorder("modules", req.body.orderedIds);
+      await reorderChildren("modules", req.body.courseId, req.body.orderedIds);
       return { ok: true };
     }
   );
@@ -151,25 +155,24 @@ export async function adminCourseRoutes(app: FastifyInstance) {
 
   app.post<{
     Params: { moduleId: string };
-    Body: { title: string; textContent?: string; videoProvider?: string; videoRef?: string };
-  }>("/admin/modules/:moduleId/lessons", async (req, reply) => {
+    Body: { title: string; textContent?: string | null; videoProvider?: string | null; videoRef?: string | null };
+  }>("/admin/modules/:moduleId/lessons", { schema: schema(object({ title: text(1000),
+    textContent: { type: "string", nullable: true }, videoProvider: { type: "string", nullable: true },
+    videoRef: { type: "string", nullable: true } }, ["title"]), idParams("moduleId")) }, async (req, reply) => {
     if (!req.body?.title) {
       reply.code(400);
       return { error: "title_required" };
     }
-    const posRes = await pool.query(
-      `select coalesce(max(position), -1) + 1 as next from lessons where module_id = $1`,
-      [req.params.moduleId]
-    );
     const { title, textContent, videoProvider, videoRef } = req.body;
-    const res = await pool.query(
-      `insert into lessons (module_id, title, position, text_content, video_provider, video_ref)
-       values ($1, $2, $3, $4, $5, $6)
-       returning *`,
-      [req.params.moduleId, title, posRes.rows[0].next, textContent ?? null, videoProvider ?? null, videoRef ?? null]
-    );
+    const lesson = await withTransaction(async client => {
+      await lockOrderingParent(client, "lessons", req.params.moduleId);
+      const position = await nextPosition(client, "lessons", req.params.moduleId);
+      return (await client.query(`insert into lessons (module_id, title, position, text_content, video_provider, video_ref)
+        values ($1, $2, $3, $4, $5, $6) returning *`,
+        [req.params.moduleId, title, position, textContent ?? null, videoProvider ?? null, videoRef ?? null])).rows[0];
+    });
     reply.code(201);
-    return { lesson: res.rows[0] };
+    return { lesson };
   });
 
   app.patch<{
@@ -197,26 +200,10 @@ export async function adminCourseRoutes(app: FastifyInstance) {
 
   app.post<{ Body: { moduleId: string; orderedIds: string[] } }>(
     "/admin/lessons/reorder",
+    { schema: schema(object({ moduleId: uuid, orderedIds: orderIds }, ["moduleId", "orderedIds"])) },
     async (req) => {
-      await reorder("lessons", req.body.orderedIds);
+      await reorderChildren("lessons", req.body.moduleId, req.body.orderedIds);
       return { ok: true };
     }
   );
-}
-
-// Проставить position = индекс в массиве orderedIds для указанной таблицы
-async function reorder(table: "modules" | "lessons", orderedIds: string[]) {
-  const client = await pool.connect();
-  try {
-    await client.query("begin");
-    for (let i = 0; i < orderedIds.length; i++) {
-      await client.query(`update ${table} set position = $2 where id = $1`, [orderedIds[i], i]);
-    }
-    await client.query("commit");
-  } catch (err) {
-    await client.query("rollback");
-    throw err;
-  } finally {
-    client.release();
-  }
 }
