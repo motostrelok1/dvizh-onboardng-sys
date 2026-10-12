@@ -254,7 +254,17 @@
 - Миграция 1700000015000: номера/one-open UNIQUE и lifecycle/score checks;
   read-only preflight и deployment описаны в README, автоматических repairs нет.
 - Локально сборка сервер/клиент/PWA и 91/91 без БД прошли.
-  PostgreSQL/API/migration проверки и полный CI ожидаются; H17 пока [ ].
+  Добавлено 35 проверок (7 без БД, 22 PostgreSQL/API, 6 legacy migration).
+  Проверены limit/resume, чужие/некорректные ID, grade/review, доступ/Origin,
+  frozen finish, rollback events и контролируемые гонки start/finish/answer/
+  editor. Legacy up/down/up сохраняет ID/баллы; конфликты отклоняются.
+- CI на 119c35b: 287/287 без ошибок/пропусков, все миграции и повторный
+  запуск, H15/H17 preflight, сервер/клиент/PWA и Nginx прошли. H17 [x].
+  PR #18: https://github.com/motostrelok1/dvizh-onboardng-sys/pull/18
+  CI: https://github.com/motostrelok1/dvizh-onboardng-sys/actions/runs/38239012004
+- Перед deployment нужна миграция 1700000015000, backup/окно обслуживания,
+  обновление всех backend/клиента вместе. VDS/рабочая БД не менялись;
+  request/event dedup остаётся DEV-10.
 
 
 ### H15 — целостность данных (2026-10-12)
