@@ -488,4 +488,14 @@
 - Push выполняется после COMMIT под тем же lock; при ошибке доставки запись
   сохраняется. Exactly-once/outbox/retry и новые идемпотентные ключи не закрыты
   этим изменением; ограничения и deployment описаны в README.
-- Локальная сборка прошла. Проверки PostgreSQL/CI ожидаются; H16 пока [ ].
+- Добавлено 36 проверок: 21 runner/scheduler/shutdown/безопасные ошибки/
+  transaction executor без БД и 15 PostgreSQL/API на отдельной схеме/ключах.
+  Проверены межпроцессная конкуренция, разные lanes, terminate backend,
+  rollback status/event и частичных reports/backfill, повтор в тот же день,
+  сохранённая dedup, COMMIT перед push/lock до окончания, Origin и доступ.
+- Локальная сборка сервера/клиента/PWA и pure-проверки прошли. CI на abfdb9e:
+  252/252 без ошибок/пропусков, миграции/повторный запуск, H15 preflight,
+  сервер/клиент/PWA и Nginx прошли. H16 отмечен [x] в HARDENING.md.
+  Проверенный запуск: https://github.com/motostrelok1/dvizh-onboardng-sys/actions/runs/38236073041
+- PR #17. Новых миграций нет; VDS/рабочая БД не менялись. Полный DEV-07
+  (outbox, новые idempotency keys, retry/backoff/мониторинг) остаётся открыт.
