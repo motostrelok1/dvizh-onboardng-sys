@@ -140,7 +140,7 @@ test("a connection acquisition failure after file validation still cleans the te
 test("lesson deleted during upload is rechecked before publication and leaves no file or row", async () => {
   let reached = false;
   const response = await withQueries(async (sql, params, client) => {
-    if (sql.includes("for key share")) {
+    if (sql.includes("for no key update")) {
       reached = true;
       await pool.query("delete from lessons where id = $1", [lessonId]);
     }

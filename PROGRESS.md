@@ -243,6 +243,19 @@
       их нужно будет воссоздать отдельной задачей, вне этапа 12.
 
 ## Решения и заметки
+### H15 — целостность данных (2026-10-12)
+- [~] Миграция 1700000014000: UNIQUE tests(scope,parent_id), generated FK
+  к модулю/уроку с cascade; nonnegative/unique positions у module/lesson/
+  question/attachment. Legacy positions нормализуются с сохранением ID;
+  дубли/осиротевшие tests останавливают миграцию без удаления данных.
+- Append/reorder сериализуются по родителю, reorder требует полную
+  permutation его детей; bulk assignment и events в одной транзакции,
+  единый порядок user locks. Read-only preflight CLI и deployment в README.
+- Добавлено 26 проверок (2 без БД, 21 API/PostgreSQL, 3 migration isolation).
+  Локально сервер/клиент/PWA и 63/63 без БД прошли; результат CI ожидается.
+  Перед обновлением VDS нужна миграция/backup/окно обслуживания;
+  VDS/production-БД не менялись. Полная модель попытки — H17, файлы — DEV-05.
+
 ### H14 — надёжность загрузки вложений (2026-10-12)
 - [x] Private .part до проверки формата, атомарная публикация без overwrite,
   независимые попытки close/unlink, короткая транзакция с recheck/lock урока.

@@ -9,6 +9,7 @@ import { logEvent } from "../events.js";
 import { attachmentContentType, hasAllowedFileContent } from "../file-content.js";
 import { installApiValidation, schema, idParams, attachmentDto, okDto, success } from "../api-validation.js";
 import { receiveAttachment, UploadReceiveError } from "../upload-receiver.js";
+import { nextPosition } from "../data-integrity.js";
 
 export async function adminAttachmentRoutes(app: FastifyInstance) {
   installApiValidation(app);
@@ -53,21 +54,18 @@ export async function adminAttachmentRoutes(app: FastifyInstance) {
           // Do not hold DB locks while receiving/parsing a potentially slow file.
           // Recheck after validation; block a concurrent lesson/cascade deletion
           // until publication and the attachment INSERT commit together.
-          const current = await client.query("select id from lessons where id = $1 for key share", [lessonId]);
+          const current = await client.query("select id from lessons where id = $1 for no key update", [lessonId]);
           if (!current.rows[0]) {
             await client.query("rollback");
             reply.code(404);
             return { error: "lesson_not_found" };
           }
-          const posRes = await client.query(
-            `select coalesce(max(position), -1) + 1 as next from lesson_attachments where lesson_id = $1`,
-            [lessonId]
-          );
+          const position = await nextPosition(client, "lesson_attachments", lessonId);
           await staged.publish();
           const res = await client.query(
             `insert into lesson_attachments (lesson_id, file_name, file_path, size_bytes, position)
              values ($1, $2, $3, $4, $5) returning *`,
-            [lessonId, filename, staged.diskPath, bytesWritten, posRes.rows[0].next]
+            [lessonId, filename, staged.diskPath, bytesWritten, position]
           );
           commitAttempted = true;
           await client.query("commit");

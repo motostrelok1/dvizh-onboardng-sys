@@ -3,6 +3,7 @@ import { pool } from "../db.js";
 import { requireAdmin } from "../auth/middleware.js";
 import { installApiValidation, schema, object, text, boolean, uuid, idParams,
   testDto, questionDto, answerDto, okDto, success } from "../api-validation.js";
+import { IntegrityError, withTransaction, lockOrderingParent, nextPosition } from "../data-integrity.js";
 
 export async function adminTestRoutes(app: FastifyInstance) {
   installApiValidation(app);
@@ -24,21 +25,23 @@ export async function adminTestRoutes(app: FastifyInstance) {
       return { error: "parent_id_required" };
     }
 
-    const existing = await pool.query(
-      `select id from tests where scope = $1 and parent_id = $2`,
-      [scope, parentId]
-    );
-    if (existing.rows[0]) {
-      reply.code(409);
-      return { error: "test_already_exists", testId: existing.rows[0].id };
+    try {
+      const test = await withTransaction(async client => {
+        const parent = await client.query(`select id from ${scope === "module" ? "modules" : "lessons"}
+          where id = $1 for key share`, [parentId]);
+        if (!parent.rows[0]) throw new IntegrityError(404);
+        return (await client.query(`insert into tests (scope, parent_id) values ($1, $2) returning *`,
+          [scope, parentId])).rows[0];
+      });
+      reply.code(201);
+      return { test };
+    } catch (error: any) {
+      if (error.code === "23505" && error.constraint === "tests_scope_parent_unique") {
+        const existing = await pool.query("select id from tests where scope = $1 and parent_id = $2", [scope, parentId]);
+        return reply.code(409).send({ error: "test_already_exists", testId: existing.rows[0]?.id });
+      }
+      throw error;
     }
-
-    const res = await pool.query(
-      `insert into tests (scope, parent_id) values ($1, $2) returning *`,
-      [scope, parentId]
-    );
-    reply.code(201);
-    return { test: res.rows[0] };
   });
 
   app.get<{ Params: { id: string } }>("/admin/tests/:id", { schema: schema(undefined, idParams(),
@@ -108,17 +111,15 @@ export async function adminTestRoutes(app: FastifyInstance) {
         reply.code(400);
         return { error: "text_required" };
       }
-      const posRes = await pool.query(
-        `select coalesce(max(position), -1) + 1 as next from questions where test_id = $1`,
-        [req.params.testId]
-      );
-      const res = await pool.query(
-        `insert into questions (test_id, text, position, multiple) values ($1, $2, $3, $4)
-         returning *`,
-        [req.params.testId, req.body.text, posRes.rows[0].next, req.body.multiple ?? false]
-      );
+      const question = await withTransaction(async client => {
+        await lockOrderingParent(client, "questions", req.params.testId);
+        const pos = await nextPosition(client, "questions", req.params.testId);
+        return (await client.query(`insert into questions (test_id, text, position, multiple)
+          values ($1, $2, $3, $4) returning *`,
+          [req.params.testId, req.body.text, pos, req.body.multiple ?? false])).rows[0];
+      });
       reply.code(201);
-      return { question: { ...res.rows[0], answers: [] } };
+      return { question: { ...question, answers: [] } };
     }
   );
 

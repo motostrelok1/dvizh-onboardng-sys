@@ -69,7 +69,8 @@ async function user() {
   return (await pool.query("select * from users where id = $1", [employeeId])).rows[0];
 }
 async function settings() {
-  return (await pool.query("select * from tests where id = $1", [testId])).rows[0];
+  return (await pool.query(`select id, scope, parent_id, max_attempts, show_correct_answers, pass_score
+    from tests where id = $1`, [testId])).rows[0];
 }
 async function credentials() {
   return {
