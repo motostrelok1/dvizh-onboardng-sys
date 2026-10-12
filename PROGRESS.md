@@ -244,7 +244,7 @@
 
 ## Решения и заметки
 ### H15 — целостность данных (2026-10-12)
-- [~] Миграция 1700000014000: UNIQUE tests(scope,parent_id), generated FK
+- [x] Миграция 1700000014000: UNIQUE tests(scope,parent_id), generated FK
   к модулю/уроку с cascade; nonnegative/unique positions у module/lesson/
   question/attachment. Legacy positions нормализуются с сохранением ID;
   дубли/осиротевшие tests останавливают миграцию без удаления данных.
@@ -252,7 +252,12 @@
   permutation его детей; bulk assignment и events в одной транзакции,
   единый порядок user locks. Read-only preflight CLI и deployment в README.
 - Добавлено 26 проверок (2 без БД, 21 API/PostgreSQL, 3 migration isolation).
-  Локально сервер/клиент/PWA и 63/63 без БД прошли; результат CI ожидается.
+  Локально сервер/клиент/PWA, 63/63 без БД, синтаксис tests/migration и
+  diff --check прошли. CI на 9d49e0a: 216/216 без ошибок/пропусков,
+  все миграции/повторный запуск, read-only preflight, сервер/клиент/PWA
+  и Nginx прошли. PR #16:
+  https://github.com/motostrelok1/dvizh-onboardng-sys/pull/16
+  CI: https://github.com/motostrelok1/dvizh-onboardng-sys/actions/runs/38226648135
   Перед обновлением VDS нужна миграция/backup/окно обслуживания;
   VDS/production-БД не менялись. Полная модель попытки — H17, файлы — DEV-05.
 
