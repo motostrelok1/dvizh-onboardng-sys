@@ -1,17 +1,14 @@
 import type { FastifyInstance } from "fastify";
-import { pipeline } from "node:stream/promises";
 import { pool } from "../db.js";
 import { requireAdmin, requireAuth } from "../auth/middleware.js";
 import {
-  ALLOWED_EXTENSIONS, allowedExtension, isValidLessonId,
-  openAttachmentForRead, openStagedAttachment, removeAttachmentFile
+  isValidLessonId, openAttachmentForRead, removeAttachmentFile
 } from "../storage.js";
 import { checkCourseAccess, getCourseIdForAttachment } from "../access.js";
 import { logEvent } from "../events.js";
 import { attachmentContentType, hasAllowedFileContent } from "../file-content.js";
 import { installApiValidation, schema, idParams, attachmentDto, okDto, success } from "../api-validation.js";
-
-const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 МБ — стартовый лимит, см. SPEC §18
+import { receiveAttachment, UploadReceiveError } from "../upload-receiver.js";
 
 export async function adminAttachmentRoutes(app: FastifyInstance) {
   installApiValidation(app);
@@ -31,42 +28,20 @@ export async function adminAttachmentRoutes(app: FastifyInstance) {
         return { error: "lesson_not_found" };
       }
 
-      let file;
+      const cleanupFailed = () => req.log.error({ event: "upload", category: "cleanup_failed" }, "operation_failed");
+      let received;
       try {
-        file = await req.file({ limits: { fileSize: MAX_FILE_SIZE } });
-      } catch (err: any) {
-        // Busboy boundary/grammar errors do not always have a status/code.
-        // Classify parser failures here, before any filesystem write; keep
-        // explicit unsupported-media and size-limit responses via the handler.
-        if (err.statusCode === 406 || err.statusCode === 413) throw err;
-        return reply.code(400).send({ error: "invalid_request" });
+        received = await receiveAttachment(req.raw, lessonId, cleanupFailed);
+      } catch (error) {
+        if (error instanceof UploadReceiveError) return reply.code(error.statusCode).send(error.response);
+        throw error;
       }
-      if (!file) {
-        reply.code(400);
-        return { error: "file_required" };
-      }
-
-      const extension = allowedExtension(file.filename);
-      if (!extension) {
-        reply.code(400);
-        return { error: "file_type_not_allowed", allowed: ALLOWED_EXTENSIONS };
-      }
-
-      const staged = await openStagedAttachment(lessonId, file.filename);
+      const { staged, filename, extension, mimetype, bytesWritten } = received;
       let persisted = false, commitAttempted = false;
       try {
-        let bytesWritten = 0;
-        file.file.on("data", (chunk: Buffer) => (bytesWritten += chunk.length));
-        await pipeline(file.file, staged.handle.createWriteStream());
-
-        if (file.file.truncated) {
-          reply.code(400);
-          return { error: "file_too_large", maxBytes: MAX_FILE_SIZE };
-        }
-
         // The multipart MIME is supplied by the client and cannot authorize a
         // format. Inspect the private completed file before inserting its row.
-        if (!await hasAllowedFileContent(staged.temporaryPath, extension, file.mimetype)) {
+        if (!await hasAllowedFileContent(staged.temporaryPath, extension, mimetype)) {
           reply.code(400);
           return { error: "file_content_not_allowed" };
         }
@@ -92,7 +67,7 @@ export async function adminAttachmentRoutes(app: FastifyInstance) {
           const res = await client.query(
             `insert into lesson_attachments (lesson_id, file_name, file_path, size_bytes, position)
              values ($1, $2, $3, $4, $5) returning *`,
-            [lessonId, file.filename, staged.diskPath, bytesWritten, posRes.rows[0].next]
+            [lessonId, filename, staged.diskPath, bytesWritten, posRes.rows[0].next]
           );
           commitAttempted = true;
           await client.query("commit");
@@ -110,9 +85,7 @@ export async function adminAttachmentRoutes(app: FastifyInstance) {
           client.release(discardClient);
         }
       } finally {
-        await staged.cleanup(persisted || commitAttempted).catch(() => {
-          req.log.error({ event: "upload", category: "cleanup_failed" }, "operation_failed");
-        });
+        await staged.cleanup(persisted || commitAttempted).catch(cleanupFailed);
       }
     }
   );
