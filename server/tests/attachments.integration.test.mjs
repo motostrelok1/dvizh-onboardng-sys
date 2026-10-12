@@ -88,6 +88,10 @@ async function attachmentCount() {
   return (await pool.query("select id from lesson_attachments where lesson_id = $1", [lessonId])).rowCount;
 }
 
+async function storedPath(id) {
+  return (await pool.query("select file_path from lesson_attachments where id = $1", [id])).rows[0].file_path;
+}
+
 async function insertStoredPath(path) {
   const result = await pool.query(
     "insert into lesson_attachments (lesson_id, file_name, file_path) values ($1, 'legacy.pdf', $2) returning id",
@@ -118,11 +122,13 @@ test("upload uses a private UUID filename and preserves the display name", async
   const response = await upload({ id: lessonId.toUpperCase() });
   assert.equal(response.statusCode, 201);
   const attachment = response.json().attachment;
+  assert.equal(attachment.file_path, undefined);
+  const path = await storedPath(attachment.id);
   assert.equal(attachment.file_name, "пособие.pdf");
-  assert.match(basename(attachment.file_path), /^[0-9a-f-]{36}\.pdf$/);
-  assert.equal(dirname(attachment.file_path), join(UPLOAD_DIR, "lessons", lessonId));
-  assert.deepEqual(await readFile(attachment.file_path), PDF);
-  assert.equal((await lstat(attachment.file_path)).mode & 0o777, 0o600);
+  assert.match(basename(path), /^[0-9a-f-]{36}\.pdf$/);
+  assert.equal(dirname(path), join(UPLOAD_DIR, "lessons", lessonId));
+  assert.deepEqual(await readFile(path), PDF);
+  assert.equal((await lstat(path)).mode & 0o777, 0o600);
   assert.equal(await attachmentCount(), 1);
   const download = await app.inject({ url: `/attachments/${attachment.id}/download`, cookies: adminCookies });
   assert.equal(download.statusCode, 200);
@@ -139,8 +145,10 @@ test("the multipart filename cannot redirect storage", async () => {
     const response = await upload({ filename });
     assert.equal(response.statusCode, 201);
     const attachment = response.json().attachment;
-    assert.match(basename(attachment.file_path), /^[0-9a-f-]{36}\.pdf$/);
-    assert.equal(dirname(attachment.file_path), join(UPLOAD_DIR, "lessons", lessonId));
+    assert.equal(attachment.file_path, undefined);
+    const path = await storedPath(attachment.id);
+    assert.match(basename(path), /^[0-9a-f-]{36}\.pdf$/);
+    assert.equal(dirname(path), join(UPLOAD_DIR, "lessons", lessonId));
   }
   assert.equal(await attachmentCount(), 3);
 });
@@ -262,7 +270,7 @@ test("client MIME cannot authorize bytes and a recognized conflicting MIME is re
 test("a stored upload has no public static API URL", async () => {
   const response = await upload();
   assert.equal(response.statusCode, 201);
-  const file = basename(response.json().attachment.file_path);
+  const file = basename(await storedPath(response.json().attachment.id));
   for (const url of [`/uploads/lessons/${lessonId}/${file}`, `/lessons/${lessonId}/${file}`]) {
     assert.equal((await app.inject({ url })).statusCode, 404);
     assert.equal((await app.inject({ url, cookies: adminCookies })).statusCode, 404);
