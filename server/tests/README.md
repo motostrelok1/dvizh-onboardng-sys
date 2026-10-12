@@ -16,11 +16,12 @@
 | Попытки | test-attempts, test-attempts.integration, attempt-integrity-migration.integration | лимит/resume, принадлежность ID, live grading, frozen finish, гонки, migration up/down |
 | Планировщики/отчёты/push transport | jobs, jobs.integration | общий lock, serial retry/drain, atomic backfill, COMMIT до push, сохранённая dedup |
 | Личные уведомления/подписки | notifications.integration | только свои данные, latest-50/unread, read идемпотентно, scoped deletion, inactive/expired/Origin |
+| События урока и offline-очередь | events (+ integration), event-integrity-migration.integration, event-queue, event-beacon | доступ/дедлайн/owner, схемы/лимиты, dedup/ACK/rollback, migration legacy, queue races/retry/logout/Beacon |
 | Тестовая среда/отчёт | test-database-guard, ci-results | отказ при неверной БД, реальный Node JUnit, empty/failure/error/skip/TODO, summary |
 
 В таблице опущен суффикс `.test.mjs`. Это карта сценариев, не процент покрытия
 всего кода. Не покрыты browser E2E/UI и реальная доставка push устройству.
-Часовые пояса, outbox/retry доставки, event dedup/access (DEV-10), антивирус,
+Часовые пояса, outbox/retry доставки, heartbeat/server-verified duration (остаток DEV-10), антивирус,
 сверка файлов после аварии и аудит зависимостей остаются отдельными задачами.
 
 ## Запуск SQL-проверок
