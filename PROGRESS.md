@@ -244,7 +244,7 @@
 
 ## Решения и заметки
 ### H12 — CSRF и canonical origin (2026-10-12)
-- [~] Root guard блокирует unsafe methods при чужом/нет/null/multiple Origin;
+- [x] Root guard блокирует unsafe methods при чужом/нет/null/multiple Origin;
   APP_ORIGIN фиксируется из конфигурации, не из Host/Referer/proxy headers.
   В production обязательный HTTPS origin; auth/roles остаются отдельно.
 - JSON Blob для pagehide Beacon совместим с no-referrer/Origin; при false
@@ -253,7 +253,10 @@
 - Добавлено 8 config/HTTP-проверок, 1 client Beacon и 8 PostgreSQL/API,
   всего 157. Локально прошли сборка сервера/клиента/PWA, 48/48 без БД,
   deploy preflight с временными env (HTTPS/пустой/HTTP/path и приоритет
-  service env), bash -n и diff --check. Результат CI будет записан после проверки.
+  service env), bash -n и diff --check. CI на e0f3763: 157/157 без ошибок/
+  пропусков, миграции/повторный запуск, сервер/клиент/PWA и Nginx прошли.
+  PR #13: https://github.com/motostrelok1/dvizh-onboardng-sys/pull/13
+  CI: https://github.com/motostrelok1/dvizh-onboardng-sys/actions/runs/38206489987
 - Новой миграции нет; перед production-deploy прописать APP_ORIGIN в
   server/.env с фактическим HTTPS-адресом LMS. Инструкция — README H12.
   VDS/его env не менялись; сервер и клиент обновлять вместе.
