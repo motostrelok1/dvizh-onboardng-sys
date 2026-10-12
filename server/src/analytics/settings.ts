@@ -1,4 +1,4 @@
-import { pool } from "../db.js";
+import { pool, type DbExecutor } from "../db.js";
 
 // Стартовые значения из SPEC §9.1. Ключи с префиксом правила можно
 // переопределить для отдельного курса; report.* — только общие.
@@ -42,18 +42,18 @@ export function isCourseOverridable(key: string): boolean {
 }
 
 // Общие настройки поверх дефолтов (без учёта курса)
-export async function getGeneralSettings(): Promise<Record<string, unknown>> {
+export async function getGeneralSettings(executor: DbExecutor = pool): Promise<Record<string, unknown>> {
   const result = { ...DEFAULT_SETTINGS };
-  const rows = await pool.query(`select key, value from analytics_settings`);
+  const rows = await executor.query(`select key, value from analytics_settings`);
   for (const r of rows.rows) result[r.key] = r.value;
   return result;
 }
 
 // Эффективные настройки для конкретного курса: дефолты → общие → переопределения курса
-export async function getEffectiveSettings(courseId: string | null): Promise<Record<string, unknown>> {
-  const result = await getGeneralSettings();
+export async function getEffectiveSettings(courseId: string | null, executor: DbExecutor = pool): Promise<Record<string, unknown>> {
+  const result = await getGeneralSettings(executor);
   if (courseId) {
-    const overrides = await pool.query(
+    const overrides = await executor.query(
       `select key, value from analytics_overrides where course_id = $1`,
       [courseId]
     );

@@ -52,6 +52,8 @@ export function installApiErrors(app: FastifyInstance) {
     const sql = Object.hasOwn(sqlErrors, err.code) ? sqlErrors[err.code] : undefined;
     if (sql) return reply.code(sql[0]).send({ error: sql[1] });
     if (err.code === "unsafe_storage_path") return reply.code(400).send({ error: "unsafe_storage_path" });
+    if (err.code === "job_in_progress") return reply.code(409).send({ error: "job_in_progress" });
+    if (err.code === "job_stopping") return reply.code(503).send({ error: "job_stopping" });
     const status = err.statusCode;
     const clientErrors: Record<number, string> = { 400: "invalid_request", 401: "not_authenticated",
       403: "forbidden", 404: "not_found", 406: "unsupported_media_type", 409: "conflict", 413: "payload_too_large",

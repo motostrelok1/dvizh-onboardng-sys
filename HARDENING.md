@@ -20,7 +20,7 @@
 - [x] H13 DEV-06 семантика PATCH (null очищает поле, отсутствие — не трогает)
 - [x] H14 DEV-05 надёжность загрузок (temp-файл, очистка при ошибке)
 - [x] H15 DEV-09 целостность данных (уникальные индексы, гонки позиций)
-- [ ] H16 DEV-07 планировщик: защита от наложения запусков
+- [x] H16 DEV-07 планировщик: защита от наложения запусков
 - [ ] H17 DEV-01 серверная модель попыток теста — проверка текущего состояния test-attempts.ts
 - [ ] H18 DEV-02 реальные серверные тесты + CI
 - [ ] H19 DEV-04 документация (README, DEPLOY, additions.md статусы)
@@ -30,6 +30,16 @@ DEV-08 часовые пояса дедлайнов, DEV-10 дедупликац
 аудит зависимостей, защита видео, статус черновиков курса.
 
 ## Журнал
+- 2026-10-12: H16 подготовлен и проверен в PR #17: фиксированные PostgreSQL
+  session advisory locks объединяют manual/login/schedule; последовательные
+  таймеры, атомарные deadline/event, reports/backfill и notification claims.
+  Push после COMMIT под lock, уничтожение сомнительной сессии, graceful drain
+  jobs/таймеров перед pool.end. Добавлено 36 проверок (21 без БД, 15 PG/API).
+  CI на abfdb9e (run 38236073041): 252/252 без ошибок/пропусков, миграции/
+  повторный запуск/preflight, сервер/клиент/PWA и Nginx прошли.
+  H16 отмечен [x]; новой миграции нет, VDS не менялся.
+  Полный DEV-07 открыт: outbox, новые idempotency keys, retry/backoff и
+  мониторинг доставки. Exactly-once push не заявляется; ограничения — README.
 - 2026-10-12: H15 подготовлен: миграция UNIQUE/FK tests и unique/nonnegative
   positions, append/reorder parent locks, полная permutation одного родителя;
   bulk assignments и events атомарны, user locks в едином порядке.

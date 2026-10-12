@@ -1,5 +1,5 @@
 import webpush from "web-push";
-import { pool } from "./db.js";
+import { pool, type DbExecutor } from "./db.js";
 
 const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY ?? "";
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY ?? "";
@@ -18,21 +18,22 @@ export function getVapidPublicKey(): string {
 // Отправляет push всем подпискам сотрудника. Молча пропускает, если push
 // не настроен (нет VAPID-ключей) — это отдельный канал уведомлений,
 // остальная система работает и без него.
-export async function sendPushToUser(userId: string, payload: { title: string; body?: string }) {
+export async function sendPushToUser(userId: string, payload: { title: string; body?: string }, executor: DbExecutor = pool) {
   if (!pushConfigured) return;
 
-  const subsRes = await pool.query(`select * from push_subscriptions where user_id = $1`, [userId]);
+  const subsRes = await executor.query(`select * from push_subscriptions where user_id = $1`, [userId]);
   for (const sub of subsRes.rows) {
     try {
       await webpush.sendNotification(
         { endpoint: sub.endpoint, keys: sub.keys },
-        JSON.stringify(payload)
+        JSON.stringify(payload),
+        { timeout: 10_000 } // socket inactivity timeout, not a total request deadline
       );
     } catch (err: any) {
       // 404/410 — подписка больше не действительна (сотрудник отключил
       // уведомления в браузере, переустановил приложение и т.п.)
       if (err.statusCode === 404 || err.statusCode === 410) {
-        await pool.query(`delete from push_subscriptions where id = $1`, [sub.id]);
+        await executor.query(`delete from push_subscriptions where id = $1`, [sub.id]);
       } else {
         console.error("Ошибка отправки push");
       }

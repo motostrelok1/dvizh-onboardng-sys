@@ -1,4 +1,4 @@
-import { pool } from "./db.js";
+import { pool, type DbExecutor } from "./db.js";
 import type { PublicUser } from "./auth/service.js";
 
 export type AccessResult = { ok: true } | { ok: false; reason: "not_found" | "deadline_passed" | "not_enrolled" | "not_assigned" };
@@ -36,8 +36,8 @@ export async function checkCourseAccess(user: PublicUser, courseId: string): Pro
 
 // Найти курс, которому принадлежит урок (через его модуль) — нужно, чтобы
 // проверить доступ при открытии урока или скачивании вложения.
-export async function getCourseIdForLesson(lessonId: string): Promise<string | null> {
-  const res = await pool.query(
+export async function getCourseIdForLesson(lessonId: string, executor: DbExecutor = pool): Promise<string | null> {
+  const res = await executor.query(
     `select m.course_id from lessons l join modules m on m.id = l.module_id where l.id = $1`,
     [lessonId]
   );
@@ -46,17 +46,17 @@ export async function getCourseIdForLesson(lessonId: string): Promise<string | n
 
 // Тест привязан либо к модулю, либо к уроку (tests.scope) — курс находим
 // в зависимости от того, к чему именно он привязан.
-export async function getCourseIdForTest(testId: string): Promise<string | null> {
-  const testRes = await pool.query(`select scope, parent_id from tests where id = $1`, [testId]);
+export async function getCourseIdForTest(testId: string, executor: DbExecutor = pool): Promise<string | null> {
+  const testRes = await executor.query(`select scope, parent_id from tests where id = $1`, [testId]);
   const test = testRes.rows[0];
   if (!test) return null;
 
   if (test.scope === "module") {
-    const res = await pool.query(`select course_id from modules where id = $1`, [test.parent_id]);
+    const res = await executor.query(`select course_id from modules where id = $1`, [test.parent_id]);
     return res.rows[0]?.course_id ?? null;
   }
 
-  const res = await pool.query(
+  const res = await executor.query(
     `select m.course_id from lessons l join modules m on m.id = l.module_id where l.id = $1`,
     [test.parent_id]
   );

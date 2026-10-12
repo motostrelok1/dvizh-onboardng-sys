@@ -26,6 +26,11 @@ import { notificationRoutes, publicPushRoutes } from "./routes/notifications.js"
 import { startNotificationScheduler } from "./jobs/notifications.js";
 import { startDeadlineChecker } from "./jobs/deadlines.js";
 
+import { pool } from "./db.js";
+import { jobRunner } from "./jobs/runner.js";
+import type { Scheduler } from "./jobs/scheduler.js";
+import { drainJobs } from "./jobs/shutdown.js";
+
 const app = Fastify({ logger: privateLogger });
 installPrivacyHeaders(app);
 installApiErrors(app);
@@ -54,11 +59,23 @@ await app.register(healthRoutes);
 
 const port = Number(process.env.PORT ?? 3000);
 
-app.listen({ port, host: "0.0.0.0" }).catch((err) => {
-  app.log.error(err);
-  process.exit(1);
-});
+const schedulers: Scheduler[] = [];
+app.addHook("onClose", async () => drainJobs(schedulers, jobRunner, pool));
+let closing: Promise<void> | undefined;
+const close = () => {
+  closing ??= app.close().catch(() => {
+    app.log.error({ event: "shutdown_failed" }, "shutdown_failed");
+    process.exitCode = 1;
+  });
+};
+process.once("SIGINT", close);
+process.once("SIGTERM", close);
 
-startDeadlineChecker();
-startReportScheduler();
-startNotificationScheduler();
+try {
+  await app.listen({ port, host: "0.0.0.0" });
+  schedulers.push(startDeadlineChecker(), startReportScheduler(), startNotificationScheduler());
+} catch (err) {
+  app.log.error(err);
+  process.exitCode = 1;
+  await app.close();
+}
