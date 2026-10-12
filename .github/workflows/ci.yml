@@ -86,7 +86,7 @@ jobs:
         if: always() && steps.tests.outcome != 'skipped'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: server-test-results
+          name: server-test-results-${{ github.run_attempt }}
           path: server/test-results.xml
           if-no-files-found: error
           retention-days: 7

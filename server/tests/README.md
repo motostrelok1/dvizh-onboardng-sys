@@ -55,7 +55,7 @@ failed/error/cancelled/skip/TODO. Отчёт и числовая summary не п
 code runner: упавший тестовый шаг остаётся ошибкой.
 
 На GitHub откройте PR → Checks → PostgreSQL and auth tests → Details.
-Числа есть в Summary запуска; в Artifacts сохранён `server-test-results`
+Числа есть в Summary запуска; в Artifacts сохранён `server-test-results-1` (номер попытки запуска в конце имени)
 на 7 дней, включая отчёт неудачного прогона. Credentials/.env и файлы
 uploads не включаются в artifact. Автоматического deployment нет.
 Обязательность Checks для main задаётся отдельно настройками репозитория;

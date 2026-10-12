@@ -892,7 +892,7 @@ VDS этим PR автоматически не меняется.
 H18 добавляет API-проверки изоляции уведомлений/подписок и отказов сессии,
 проверки test-database guard, JUnit и контроль успешности всего прогона.
 `npm test` остаётся обычной командой; Actions использует `test:ci`, сохраняет
-spec-лог, числовую Summary и JUnit artifact `server-test-results` на 7 дней.
+spec-лог, числовую Summary и JUnit artifact `server-test-results-1` (номер попытки запуска в конце имени) на 7 дней.
 Пустой/пропущенный/TODO/упавший прогон не может пройти проверку отчёта.
 Job names сохранены. Новых миграций/deployment/branch-protection changes
 нет. Browser E2E, реальное устройство с push, аудит зависимостей и открытые
