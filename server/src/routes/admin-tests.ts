@@ -81,12 +81,13 @@ export async function adminTestRoutes(app: FastifyInstance) {
     const { maxAttempts, showCorrectAnswers, passScore } = req.body;
     const res = await pool.query(
       `update tests set
-         max_attempts = $2,
+         max_attempts = case when $5::boolean then $2::integer else max_attempts end,
          show_correct_answers = coalesce($3, show_correct_answers),
          pass_score = coalesce($4, pass_score)
        where id = $1
        returning *`,
-      [req.params.id, maxAttempts === undefined ? null : maxAttempts, showCorrectAnswers, passScore]
+      // Missing maxAttempts preserves the limit; explicit null means unlimited.
+      [req.params.id, maxAttempts, showCorrectAnswers, passScore, Object.hasOwn(req.body, "maxAttempts")]
     );
     return { test: res.rows[0] };
   });

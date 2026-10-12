@@ -61,12 +61,13 @@ export async function adminUserRoutes(app: FastifyInstance) {
       const res = await client.query(
         `update users set
            full_name = coalesce($2, full_name),
-           department_id = coalesce($3, department_id),
+           department_id = case when $6::boolean then $3::uuid else department_id end,
            timezone = coalesce($4, timezone),
            is_active = coalesce($5, is_active)
          where id = $1
          returning id, full_name, email, role, department_id, timezone, is_active`,
-        [req.params.id, fullName, departmentId, timezone, isActive]
+        // Only an explicit departmentId (including null) changes the department.
+        [req.params.id, fullName, departmentId, timezone, isActive, Object.hasOwn(req.body, "departmentId")]
       );
       if (res.rows[0]?.is_active === false) {
         await client.query("delete from sessions where user_id = $1", [req.params.id]);

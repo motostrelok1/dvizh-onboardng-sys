@@ -243,6 +243,15 @@
       их нужно будет воссоздать отдельной задачей, вне этапа 12.
 
 ## Решения и заметки
+### H13 — семантика PATCH (2026-10-12)
+- [~] В admin-users явный departmentId: null очищает отдел, отсутствие
+  сохраняет его; в admin-tests отсутствие maxAttempts сохраняет лимит,
+  явный null включает безлимит. Атомарные SQL CASE без read/modify/write.
+- Добавлено 11 PostgreSQL/API-проверок сохранности полей/credentials,
+  очистки/восстановления, false/0, запрещённого null, отката FK и доступа.
+  Сборка сервера/клиента/PWA прошла; результат PostgreSQL/CI ожидается.
+  Новых миграций нет; VDS/рабочая БД не менялись.
+
 ### H12 — CSRF и canonical origin (2026-10-12)
 - [x] Root guard блокирует unsafe methods при чужом/нет/null/multiple Origin;
   APP_ORIGIN фиксируется из конфигурации, не из Host/Referer/proxy headers.
