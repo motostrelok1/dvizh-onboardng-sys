@@ -3,8 +3,8 @@ import { pipeline } from "node:stream/promises";
 import { pool } from "../db.js";
 import { requireAdmin, requireAuth } from "../auth/middleware.js";
 import {
-  ALLOWED_EXTENSIONS, allowedExtension, ensureLessonDir, isValidLessonId,
-  openAttachmentForRead, openNewAttachment, removeAttachmentFile, storedFileName
+  ALLOWED_EXTENSIONS, allowedExtension, isValidLessonId,
+  openAttachmentForRead, openStagedAttachment, removeAttachmentFile
 } from "../storage.js";
 import { checkCourseAccess, getCourseIdForAttachment } from "../access.js";
 import { logEvent } from "../events.js";
@@ -52,13 +52,12 @@ export async function adminAttachmentRoutes(app: FastifyInstance) {
         return { error: "file_type_not_allowed", allowed: ALLOWED_EXTENSIONS };
       }
 
-      await ensureLessonDir(lessonId);
-      const { diskPath, handle } = await openNewAttachment(lessonId, storedFileName(file.filename));
-      let persisted = false;
+      const staged = await openStagedAttachment(lessonId, file.filename);
+      let persisted = false, commitAttempted = false;
       try {
         let bytesWritten = 0;
         file.file.on("data", (chunk: Buffer) => (bytesWritten += chunk.length));
-        await pipeline(file.file, handle.createWriteStream());
+        await pipeline(file.file, staged.handle.createWriteStream());
 
         if (file.file.truncated) {
           reply.code(400);
@@ -67,29 +66,53 @@ export async function adminAttachmentRoutes(app: FastifyInstance) {
 
         // The multipart MIME is supplied by the client and cannot authorize a
         // format. Inspect the private completed file before inserting its row.
-        if (!await hasAllowedFileContent(diskPath, extension, file.mimetype)) {
+        if (!await hasAllowedFileContent(staged.temporaryPath, extension, file.mimetype)) {
           reply.code(400);
           return { error: "file_content_not_allowed" };
         }
 
-        const posRes = await pool.query(
-          `select coalesce(max(position), -1) + 1 as next from lesson_attachments where lesson_id = $1`,
-          [lessonId]
-        );
-        const res = await pool.query(
-          `insert into lesson_attachments (lesson_id, file_name, file_path, size_bytes, position)
-           values ($1, $2, $3, $4, $5)
-           returning *`,
-          [lessonId, file.filename, diskPath, bytesWritten, posRes.rows[0].next]
-        );
-        persisted = true;
-        reply.code(201);
-        return { attachment: res.rows[0] };
-      } finally {
-        await handle.close();
-        if (!persisted) {
-          await removeAttachmentFile(lessonId, diskPath).catch((error) => app.log.error(error));
+        const client = await pool.connect();
+        let discardClient = false;
+        try {
+          await client.query("begin isolation level read committed");
+          // Do not hold DB locks while receiving/parsing a potentially slow file.
+          // Recheck after validation; block a concurrent lesson/cascade deletion
+          // until publication and the attachment INSERT commit together.
+          const current = await client.query("select id from lessons where id = $1 for key share", [lessonId]);
+          if (!current.rows[0]) {
+            await client.query("rollback");
+            reply.code(404);
+            return { error: "lesson_not_found" };
+          }
+          const posRes = await client.query(
+            `select coalesce(max(position), -1) + 1 as next from lesson_attachments where lesson_id = $1`,
+            [lessonId]
+          );
+          await staged.publish();
+          const res = await client.query(
+            `insert into lesson_attachments (lesson_id, file_name, file_path, size_bytes, position)
+             values ($1, $2, $3, $4, $5) returning *`,
+            [lessonId, file.filename, staged.diskPath, bytesWritten, posRes.rows[0].next]
+          );
+          commitAttempted = true;
+          await client.query("commit");
+          persisted = true;
+          reply.code(201);
+          return { attachment: res.rows[0] };
+        } catch (error) {
+          try { await client.query("rollback"); }
+          catch { discardClient = true; }
+          // Losing COMMIT's acknowledgement is ambiguous: deleting the file
+          // could break a committed DB row. Retain it for later reconciliation.
+          if (commitAttempted) req.log.error({ event: "upload", category: "commit_uncertain" }, "operation_failed");
+          throw error;
+        } finally {
+          client.release(discardClient);
         }
+      } finally {
+        await staged.cleanup(persisted || commitAttempted).catch(() => {
+          req.log.error({ event: "upload", category: "cleanup_failed" }, "operation_failed");
+        });
       }
     }
   );
