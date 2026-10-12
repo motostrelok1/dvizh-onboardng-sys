@@ -22,10 +22,10 @@ GitHub Actions запускает `.github/workflows/ci.yml` на PR, main и в
 - **PostgreSQL and auth tests** — PostgreSQL 16, все миграции и повторный запуск,
   оба preflight, реальные Fastify inject/SQL проверки, JUnit gate/Summary/artifact.
 
-На main после PR #19 проверено **303/303** без ошибок и пропусков:
-[CI 38247225491](https://github.com/motostrelok1/dvizh-onboardng-sys/actions/runs/38247225491).
+В PR #21 на f60a3a8 проверено **343/343** без ошибок и пропусков:
+[CI 38255573253](https://github.com/motostrelok1/dvizh-onboardng-sys/actions/runs/38255573253).
 Набор включает auth/roles/revocation/rate limits, файлы, дедлайны, attempts,
-контент/назначения, jobs/reports и личные уведомления. Подробная карта и
+контент/назначения, jobs/reports, личные уведомления и события/offline-очередь. Подробная карта и
 локальный запуск — [server/tests/README.md](server/tests/README.md).
 Browser E2E, реальное push-устройство и аудит зависимостей — отдельные задачи.
 
@@ -913,3 +913,8 @@ marker владельца блокирует отправку из старой 
 NULL client_event_id, IDs/payload/time не изменяются. Migration down стирает
 ключи дедупликации/rate buckets и делает retry небезопасным: не использовать
 его как обычный rollback. Ни VDS, ни рабочая БД этим PR не меняются.
+
+Проверено в PR #21: 40 новых проверок, локально build/PWA и 121/121 без БД;
+[CI на f60a3a8](https://github.com/motostrelok1/dvizh-onboardng-sys/actions/runs/38255573253) — 343/343 без
+ошибок/пропусков, миграции/re-run/оба preflight, JUnit gate/summary/artifact,
+сервер/клиент/PWA и Nginx прошли. DEV-10.1 отмечен [x] в PROGRESS.md.

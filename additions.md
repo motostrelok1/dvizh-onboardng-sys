@@ -30,7 +30,7 @@ production-инструкции — DEPLOY.md. Старые описания у�
 | P1 | SEC-05 / DEV-05 | Макросы/сканирование/карантин; квоты/параллельность/место; crash/orphan reconciliation; удаление файлов при cascade |
 | P1 | Зависимости/секреты | Lockfile/advisory audit, поддерживаемые runtime/framework, git-history secret scanning и политика хранения персональных данных |
 | P1 | Видео/черновики | Выбрать провайдера/защиту URL/CSP; согласовать доступ к draft для назначенного сотрудника |
-| P1–P2 | DEV-10 события | DEV-10.1 в работе: доступ/лимиты/eventId/ACK/owner очередь; heartbeat, проверенная длительность и browser offline/E2E остаются |
+| P1–P2 | DEV-10 события | DEV-10.1 выполнен: доступ/лимиты/eventId/ACK/owner очередь; heartbeat, проверенная длительность и browser offline/E2E остаются |
 | P2 | DEV-07 доставка | Durable outbox, ключ правила/версии назначения, retry/backoff и мониторинг; current job lock не даёт exactly-once push |
 | P2, требуется решение | DEV-08 | Semantics даты/конца дня по IANA timezone; границы отчётов/DST, сейчас UTC |
 | P2 | DEV-11 / клиент | Browser E2E, mobile/loading/error/empty/accessibility, подтверждение удаления/экспорт, исправления по обратной связи |
@@ -285,14 +285,17 @@ CI: npm ci → server build → реальные tests → client build. Доп�
 
 ### DEV-10 — Защита событий и offline-очередь
 
-**Статус DEV-10.1 (2026-10-12):** подготовлены доступ/дедлайн под locks,
+**Статус DEV-10.1 (2026-10-12):** реализованы доступ/дедлайн под locks,
 строгий payload, rate/size/batch limits, UNIQUE eventId по owner и ACK после
 COMMIT. Queue v2 сохраняет ID при retry/Beacon, удаляет только ACK IDs,
 защищает новые события/другие вкладки, очищает logout/user switch;
 created_at отделяет серверный приём от клиентского occurred_at. Нужна
 миграция 1700000016000 и совместное обновление backend/client; queue v1
-без owner не переносится. Проверки/CI фиксируются в PROGRESS/PR #21,
-DEV-10.1 пока [~]. Полный DEV-10 открыт: heartbeat/server pairs, доверенная
+без owner не переносится. Добавлено 40 проверок (22 без БД, 18 SQL/API/migration);
+[CI на f60a3a8](https://github.com/motostrelok1/dvizh-onboardng-sys/actions/runs/38255573253) прошёл: 343/343
+без ошибок/пропусков, миграции/re-run/оба preflight, gate/artifact/build/PWA/Nginx.
+Локально build/PWA и 121/121 без БД прошли. DEV-10.1 [x] в PROGRESS, PR #21;
+VDS не менялся. Полный DEV-10 открыт: heartbeat/server pairs, доверенная
 модель длительности/видео, browser E2E и политика хранения/ограничение потери
 при переполнении localStorage отдельно.
 
