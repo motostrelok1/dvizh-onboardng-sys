@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "../admin/api";
 import { enqueueEvent } from "../events";
 
@@ -21,29 +21,29 @@ const ERROR_MESSAGE: Record<string, string> = {
 export function LessonScreen({ lessonId, onBack }: { lessonId: string; onBack: () => void }) {
   const [data, setData] = useState<{ lesson: Lesson; attachments: Attachment[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const startedAtRef = useRef<number | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
+    setData(null); setError(null);
     api
       .get<{ lesson: Lesson; attachments: Attachment[] }>(`/lessons/${lessonId}`)
-      .then(setData)
-      .catch((e) => setError(e.message));
+      .then((result) => { if (!cancelled) setData(result); })
+      .catch((e) => { if (!cancelled) setError(e.message); });
+    return () => { cancelled = true; };
   }, [lessonId]);
 
   // Время, проведённое на уроке — пишем в журнал событий (этап 8), не
   // дожидаясь прогресса/аналитики, которые будут считаться из него позже.
   useEffect(() => {
-    if (!data) return;
-    startedAtRef.current = Date.now();
+    if (!data || data.lesson.id !== lessonId) return;
+    const startedAt = performance.now();
     enqueueEvent({ eventType: "lesson_view_start", entityId: lessonId });
     return () => {
-      if (startedAtRef.current) {
-        enqueueEvent({
-          eventType: "lesson_view_end",
-          entityId: lessonId,
-          payload: { durationMs: Date.now() - startedAtRef.current }
-        });
-      }
+      enqueueEvent({
+        eventType: "lesson_view_end",
+        entityId: lessonId,
+        payload: { durationMs: Math.min(2147483647, Math.max(0, Math.round(performance.now() - startedAt))) }
+      });
     };
   }, [data, lessonId]);
 

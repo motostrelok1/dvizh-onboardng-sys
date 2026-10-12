@@ -101,7 +101,7 @@ test("same-site foreign origin cannot mutate admin data, tests, enrollment, even
     ["POST", `/admin/users/${userId}/invitations`, undefined, adminCookies],
     ["PUT", "/admin/settings/analytics", { "risk.days": 99 }, adminCookies],
     ["POST", `/tests/${testId}/attempts`], ["POST", `/courses/${courseId}/enroll`],
-    ["POST", "/events", { events: [{ eventType: "lesson_view_start", entityId: lessonId, occurredAt: new Date().toISOString() }] }],
+    ["POST", "/events", { ownerId: userId, events: [{ eventId: randomUUID(), eventType: "lesson_view_start", entityId: lessonId, occurredAt: new Date().toISOString() }] }],
     ["POST", "/me/push-subscription", { endpoint: "https://push.example.test/SECRET", keys: { auth: "SECRET", p256dh: "SECRET" } }]]) {
     denied(await call(method, url, payload, cookies ?? userCookies, foreign));
   }
@@ -149,7 +149,7 @@ test("allowed invitation check/accept still reset credentials and create a usabl
 });
 
 test("allowed JSON events/upload and downloads work while foreign multipart cannot create a file", async () => {
-  const event = await call("POST", "/events", { events: [{ eventType: "lesson_view_start", entityId: lessonId,
+  const event = await call("POST", "/events", { ownerId: userId, events: [{ eventId: randomUUID(), eventType: "lesson_view_start", entityId: lessonId,
     occurredAt: new Date().toISOString() }] });
   assert.equal(event.statusCode, 200); assert.equal(event.json().accepted, 1);
   denied(await call("POST", `/admin/lessons/${lessonId}/attachments`, "SECRET-malformed", adminCookies, foreign,
