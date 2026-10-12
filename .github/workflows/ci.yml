@@ -77,4 +77,16 @@ jobs:
       - name: Check H17 read-only attempt preflight
         run: npm run check:attempt-integrity --workspace server
       - name: Run integration tests
-        run: npm test
+        id: tests
+        run: npm run test:ci --workspace server
+      - name: Require complete test run and write summary
+        if: always() && steps.tests.outcome != 'skipped'
+        run: node server/scripts/check-test-results.mjs server/test-results.xml
+      - name: Save JUnit report
+        if: always() && steps.tests.outcome != 'skipped'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: server-test-results
+          path: server/test-results.xml
+          if-no-files-found: error
+          retention-days: 7
