@@ -5,3 +5,4 @@ server/uploads
 *.tsbuildinfo
 client/src/**/*.js
 client/dist
+server/test-results.xml

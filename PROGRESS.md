@@ -243,6 +243,25 @@
       их нужно будет воссоздать отдельной задачей, вне этапа 12.
 
 ## Решения и заметки
+### H18 — серверные тесты и CI (2026-10-12)
+- Добавлены проверки личных уведомлений/подписок, изоляции, session/Origin,
+  ограничения списка/unread и приватной ошибки SQL.
+- Test database guard проверен отдельными процессами; JUnit gate отклоняет
+  пустые/failure/error/cancel/skip/TODO, включая настоящий Node reporter.
+- Actions сохраняет spec/JUnit, summary и artifact 7 дней; прежние job names
+  сохранены. Карта тестов/команды/границы — server/tests/README.md.
+- Добавлено 16 проверок: 8 PostgreSQL/API и 8 без БД; последние запускают
+  guard/checker/Node reporter отдельными процессами, а не только XML fixtures.
+- Локально сборка сервер/клиент/PWA, 99/99 без БД и настоящий JUnit gate прошли.
+  CI на 671678e: 303/303 без ошибок/пропусков, все миграции/повторный запуск,
+  оба preflight, report gate/summary/upload, сборка/PWA и Nginx прошли. H18 [x].
+  PR #19: https://github.com/motostrelok1/dvizh-onboardng-sys/pull/19
+  CI: https://github.com/motostrelok1/dvizh-onboardng-sys/actions/runs/38241397509
+- Artifact имеет номер run_attempt, чтобы rerun не конфликтовал с прежним
+  отчётом. Новых миграций нет, VDS/branch protection не менялись;
+  browser E2E, реальная push-доставка и аудит зависимостей отдельно.
+
+
 ### H17 — серверная модель попыток (2026-10-12)
 - Реализованы атомарные start/answer/finish + events, locks сотрудника/теста/
   попытки и редактора; открытая попытка возобновляется до проверки лимита.

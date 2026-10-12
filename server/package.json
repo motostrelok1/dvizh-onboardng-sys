@@ -14,7 +14,8 @@
     "seed:admin": "dotenv -e .env -- tsx scripts/seed-admin.ts",
     "invite": "dotenv -e .env -- tsx scripts/create-invitation.ts",
     "vapid:generate": "tsx scripts/generate-vapid-keys.ts",
-    "test": "node --test --import tsx tests/*.test.mjs"
+    "test": "node --test --import tsx tests/*.test.mjs",
+    "test:ci": "node --test --import tsx --test-reporter=spec --test-reporter=junit --test-reporter-destination=stdout --test-reporter-destination=test-results.xml tests/*.test.mjs"
   },
   "dependencies": {
     "@fastify/busboy": "3.2.2",
