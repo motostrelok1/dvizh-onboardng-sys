@@ -29,6 +29,17 @@ npm run migrate --workspace=server
 echo "==> Сборка сервера"
 npm run build --workspace=server
 
+echo "==> Проверка APP_ORIGIN для production"
+# Read the service's env file, not a possibly different shell APP_ORIGIN.
+# Fail before publishing client files or restarting the working service.
+node --input-type=module -e '
+import { config } from "dotenv";
+import { configuredOrigin } from "./server/dist/csrf.js";
+const env = config({ path: "server/.env" });
+if (env.error) throw new Error("Cannot read server/.env");
+configuredOrigin(env.parsed?.APP_ORIGIN ?? "", true);
+'
+
 echo "==> Сборка клиента"
 npm run build --workspace=client
 

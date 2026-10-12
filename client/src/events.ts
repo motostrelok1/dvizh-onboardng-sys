@@ -67,8 +67,10 @@ if (typeof window !== "undefined") {
   window.addEventListener("pagehide", () => {
     const queue = loadQueue();
     if (queue.length > 0 && "sendBeacon" in navigator) {
-      navigator.sendBeacon("/api/events", JSON.stringify({ events: queue }));
-      saveQueue([]);
+      // JSON Blob uses CORS mode, preserving Origin even with no-referrer;
+      // a string beacon uses text/plain/no-cors and may send Origin: null.
+      const body = new Blob([JSON.stringify({ events: queue })], { type: "application/json" });
+      if (navigator.sendBeacon("/api/events", body)) saveQueue([]);
     }
   });
   flush(); // досылаем то, что накопилось с прошлой сессии

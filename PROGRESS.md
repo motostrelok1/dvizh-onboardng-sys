@@ -243,6 +243,21 @@
       их нужно будет воссоздать отдельной задачей, вне этапа 12.
 
 ## Решения и заметки
+### H12 — CSRF и canonical origin (2026-10-12)
+- [~] Root guard блокирует unsafe methods при чужом/нет/null/multiple Origin;
+  APP_ORIGIN фиксируется из конфигурации, не из Host/Referer/proxy headers.
+  В production обязательный HTTPS origin; auth/roles остаются отдельно.
+- JSON Blob для pagehide Beacon совместим с no-referrer/Origin; при false
+  очередь сохраняется. ACK/dedup событий остаются DEV-10. Deploy preflight
+  проверяет service env до client publish/restart.
+- Добавлено 8 config/HTTP-проверок, 1 client Beacon и 8 PostgreSQL/API,
+  всего 157. Локально прошли сборка сервера/клиента/PWA, 48/48 без БД,
+  deploy preflight с временными env (HTTPS/пустой/HTTP/path и приоритет
+  service env), bash -n и diff --check. Результат CI будет записан после проверки.
+- Новой миграции нет; перед production-deploy прописать APP_ORIGIN в
+  server/.env с фактическим HTTPS-адресом LMS. Инструкция — README H12.
+  VDS/его env не менялись; сервер и клиент обновлять вместе.
+
 ### SEC-11 — runtime-валидация API и безопасные ошибки (2026-10-12)
 - [x] Строгие JSON Schema body/params/query в auth/admin-users/admin-tests/
   admin-attachments: UUID, типы без coercion, IANA timezone, email/строки,
