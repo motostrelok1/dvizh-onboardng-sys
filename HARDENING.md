@@ -27,14 +27,14 @@
 - [x] H16 DEV-07 планировщик: защита от наложения запусков
 - [x] H17 DEV-01 серверная модель попыток теста — проверка текущего состояния test-attempts.ts
 - [x] H18 DEV-02 реальные серверные тесты + CI
-- [~] H19 DEV-04 документация (README, DEPLOY, additions.md статусы)
+- [x] H19 DEV-04 документация (README, DEPLOY, additions.md статусы)
 
 Отдельно, вне этого списка (открытые вопросы, нужны решения пользователя или отдельная проработка):
 DEV-08 часовые пояса дедлайнов, DEV-10 дедупликация событий, DEV-11 UX,
 аудит зависимостей, защита видео, статус черновиков курса.
 
 ## Журнал
-- 2026-10-12: H19 в работе: README/PROGRESS/additions/STAGE12 сверены с кодом;
+- 2026-10-12: H19 проверен в PR #20: README/PROGRESS/additions/STAGE12 сверены с кодом;
   DEPLOY.md объединяет development/production, stop/backup/preflight/migrate,
   пути/systemd/Nginx, восстановление и границы deploy/backup scripts.
   H01–H06 синхронизированы после аудита кода и CI main af820d7
@@ -44,7 +44,10 @@ DEV-08 часовые пояса дедлайнов, DEV-10 дедупликац
   внешняя сеть/DB-role/права VDS не считаются проверенными.
   Локально build/PWA, links/anchors и 24 bash blocks проверены; noEmit/
   отсутствие generated JS после build подтверждены. Новых миграций/кода/
-  production-изменений нет. Финальный CI ожидается.
+  production-изменений нет. CI на 584c1ac (run 38249337062): 303/303
+  без ошибок/пропусков, миграции/повторный запуск/оба preflight,
+  JUnit gate/summary/upload, сервер/клиент/PWA и Nginx прошли. H19 [x].
+  Проверенный запуск: https://github.com/motostrelok1/dvizh-onboardng-sys/actions/runs/38249337062
 - 2026-10-12: H18 проверен в PR #19: 8 SQL/API-проверок уведомлений/подписок
   (owner scope, latest-50/unread, read/upsert/delete, session/Origin/safe error)
   и 8 проверок test-database guard/JUnit. Настоящий Node skip/TODO с exit 0

@@ -19,7 +19,7 @@ production-инструкции — DEPLOY.md. Старые описания у�
 | SEC-06/07/08/09/10 | rate limits, приватные ссылки/логи, reset/revocation, deadline, minimal health | Vhost/retention, защита видео, timezone отдельно |
 | SEC-11/H12/H13 | scoped схемы/DTO/errors, exact Origin, PATCH missing/null | Полные схемы остальных endpoint ещё нужны |
 | DEV-01/02/03/06/09 | attempts, реальные tests/CI, noEmit/no generated JS, PATCH, DB integrity | Browser E2E, dependency audit и file cascade cleanup отдельно |
-| DEV-04 (H19) | README/DEPLOY/статусы обновляются этим PR | Финальный CI H19 пока ожидается |
+| DEV-04 (H19) | README/DEPLOY/статусы обновлены; проверки документации и CI 303/303 прошли | Инструкции проверены по коду; конкретный VDS отдельно |
 | DEV-05/07 | Загрузки и jobs защищены H14/H16 | Полностью не закрыты: остаток ниже |
 
 ## Актуальный backlog
@@ -246,7 +246,7 @@ CI: npm ci → server build → реальные tests → client build. Доп�
 - Разделить development и production: env, установка через npm ci, миграции, запуск, Nginx, uploads, резервные копии и rollback.
 - Сохранить один основной план; additions.md использовать как backlog с приоритетами и статусами.
 
-**Статус H19 (2026-10-12):** README/PROGRESS/STAGE12/additions сверены с кодом; DEPLOY.md объединяет first start/update, env/пути, stop/backup/preflight/migrations, systemd/Nginx и rollback. H01–H06 синхронизированы после аудита и CI main 303/303. Новых миграций/runtime-изменений нет; VDS не менялся. Проверки документации и финальный CI ожидаются, H19 [~].
+**Статус H19 (2026-10-12):** README/PROGRESS/STAGE12/additions сверены с кодом; DEPLOY.md объединяет first start/update, env/пути, stop/backup/preflight/migrations, systemd/Nginx и rollback. H01–H06 синхронизированы после аудита и CI main 303/303. Локально build/PWA, links/anchors, bash -n для 24 блоков, noEmit/отсутствие generated JS проверены. [CI PR #20 на 584c1ac](https://github.com/motostrelok1/dvizh-onboardng-sys/actions/runs/38249337062): 303/303 без ошибок/пропусков, миграции/повторный запуск/оба preflight, JUnit gate/summary/upload, сервер/клиент/PWA и Nginx прошли. H19 [x]. Новых миграций/runtime-изменений нет; VDS не менялся.
 
 ### DEV-05 — Надёжность загрузок — P1
 
