@@ -11,7 +11,7 @@ GitHub Actions запускает `.github/workflows/ci.yml` для каждог
 
 - **Server and client build** — TypeScript сервера и клиента, Vite и PWA.
 - **PostgreSQL and auth tests** — отдельная PostgreSQL 16, все миграции,
-  повторный запуск миграций и 140 тестов: авторизация, rate limits,
+  повторный запуск миграций и 157 тестов: авторизация, rate limits, CSRF,
   runtime-валидация и безопасные ошибки, дедлайны и доступ к тестам,
   health, вложения, файловое хранилище и содержимое файлов.
 
@@ -100,8 +100,80 @@ Ajv 8.20.0 и ajv-formats 2.1.1 закреплены как прямые зав�
 через npm ci, сборку и restart всех серверных экземпляров. VDS не менялся.
 
 Семантика отсутствующих/null полей PATCH (DEV-06), целостность и гонки
-учебных попыток (DEV-01), схемы остальных API-модулей и CSRF — отдельные
+учебных попыток (DEV-01) и схемы остальных API-модулей — отдельные
 задачи. SEC-11 охватывает указанные выше четыре модуля.
+
+## CSRF и адрес приложения (H12)
+
+Корневой onRequest hook проверяет все методы, кроме GET/HEAD/OPTIONS,
+до парсинга body, авторизации, auth rate counters и бизнес-операций.
+Требуется ровно один `Origin`, равный настроенному `APP_ORIGIN`.
+Чужой/соседний поддомен, другой порт/протокол, `null`, список значений,
+неправильный или отсутствующий Origin дают 403 `csrf_forbidden` без
+изменения сессии/данных. Защищены также login, invite check/accept/logout,
+multipart, события, попытки теста, push и будущие вложенные маршруты.
+GET/HEAD/OPTIONS всё равно подчиняются обычной авторизации своих routes.
+Действия, меняющие учебные/пользовательские данные, не должны использовать GET.
+
+Доверенный адрес берётся из конфигурации при старте, не из Host,
+X-Forwarded-Host/Proto, Referer или Fetch Metadata. SameSite=Lax/Secure
+cookie и роль продолжают проверяться отдельно. Referer fallback и исключение
+для loopback не добавлены; CORS не включён. Проверка относится к браузерной
+CSRF-модели: HTTP-клиент может указать Origin сам и всё равно должен иметь
+действующую сессию/роль. Эта мера не защищает от выполнения чужого кода
+внутри самого origin приложения.
+
+### Обязательно перед первым production-деплоем H12
+
+1. На сервере откройте файл из `EnvironmentFile` вашего lms.service.
+   В примере репозитория это `/opt/lms/server/.env`:
+
+   ```bash
+   nano /opt/lms/server/.env
+   ```
+
+2. Добавьте строку ниже, заменив `edu.example.ru` **реальным HTTPS-адресом
+   LMS из адресной строки браузера** (тем же доменом, что в Nginx):
+
+   ```dotenv
+   APP_ORIGIN=https://edu.example.ru
+   ```
+
+   Только схема/хост/необязательный порт, без `/api`, path, query, fragment,
+   логина/пароля и wildcard. Нельзя использовать домен другого проекта.
+   Один canonical origin; заходить на приложение нужно через него.
+
+3. Сохраните файл и выполните обычное обновление/сборку/restart.
+   Новой миграции H12 нет. `deploy/deploy.sh` проверяет APP_ORIGIN из
+   server/.env после сборки сервера, до публикации клиента/restart.
+   При пустом/неправильном/HTTP-адресе production запуск отказывается
+   работать. Проверки `/health` и `/health/db` в deploy.sh сохраняются.
+
+Для разработки `.env.example` содержит `http://localhost:5173`; без значения
+вне production используется тот же origin. Для другого Vite-порта или
+127.0.0.1 задайте точный адрес браузера в APP_ORIGIN. Nginx/Vite должны
+передавать исходный Origin без подмены; текущие примеры proxy с этим совместимы.
+Обновлять сервер и клиент вместе: Beacon теперь передаёт application/json Blob,
+сохраняя Origin при no-referrer, и не очищает очередь, если браузер отказался
+поставить запрос в отправку. Подтверждение записи сервером и дедупликация
+событий остаются отдельной задачей DEV-10.
+
+После обновления можно проверить guard без входа/чужих данных:
+
+```bash
+# 403 csrf_forbidden — без Origin
+curl -i -X POST http://127.0.0.1:3000/auth/logout
+# 200 ok — замените origin тем же фактическим адресом, что в server/.env
+curl -i -X POST http://127.0.0.1:3000/auth/logout -H 'Origin: https://edu.example.ru'
+```
+
+Добавлены 8 HTTP/config-проверок без БД, проверка реального pagehide/Blob
+и 8 PostgreSQL/API-сценариев: отказ до изменений/счётчиков, нормальный
+login/invite/редактор/upload/events/test flow и сохранение авторизации.
+VDS/его env не менялись в этой задаче. Основание политики:
+[OWASP CSRF](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html),
+[Fetch Origin](https://fetch.spec.whatwg.org/#append-a-request-origin-header),
+[Beacon](https://www.w3.org/TR/beacon/#sendbeacon-method).
 
 ## Безопасные пути вложений (SEC-04)
 
