@@ -148,7 +148,7 @@ export async function checkScheduledReports(now = new Date()): Promise<string[]>
     const mode = settings["report.mode"];
     if (mode !== "schedule" && mode !== "both") return [];
     const [h, m] = String(settings["report.schedule_time"] ?? "07:00").split(":").map(Number);
-    if (now.getUTCHours() * 60 + now.getUTCMinutes() < h * 60 + m) return [];
+    if (!(now.getUTCHours() * 60 + now.getUTCMinutes() >= h * 60 + m)) return [];
     return ensureReportsUnlocked(client, "schedule");
   });
 }

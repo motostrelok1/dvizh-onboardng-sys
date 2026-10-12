@@ -193,6 +193,16 @@ test("failed scheduled backfill retries on the same day instead of caching failu
   await pool.query("drop function reject_backfill()");
 });
 
+test("scheduled reports preserve disabled, before-time and invalid-time behavior", async () => {
+  assert.deepEqual(await checkScheduledReports(), []); // default login mode
+  await pool.query(`insert into analytics_settings (key, value) values ('report.mode', '"schedule"'), ('report.schedule_time', '"23:59"')`);
+  const before = new Date(); before.setUTCHours(0, 0, 0, 0);
+  assert.deepEqual(await checkScheduledReports(before), []);
+  await pool.query(`update analytics_settings set value = '"invalid"' where key = 'report.schedule_time'`);
+  assert.deepEqual(await checkScheduledReports(), []);
+  assert.equal(await count("daily_reports"), 0);
+});
+
 test("notifications seed defaults once and persist deduplication across runner instances", async () => {
   await pool.query("update assignments set status = 'overdue' where id = $1", [assignmentId]);
   assert.equal(await checkAndSendNotifications(), 2);
