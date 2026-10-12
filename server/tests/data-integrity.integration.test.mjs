@@ -17,6 +17,7 @@ const scratch = await mkdtemp(join(tmpdir(), "lms-integrity-test-"));
 process.env.UPLOAD_DIR = join(scratch, "uploads");
 const { pool } = await import("../src/db.ts");
 const { createSession } = await import("../src/auth/service.ts");
+const { logEvent } = await import("../src/events.ts");
 const { SESSION_COOKIE } = await import("../src/auth/constants.ts");
 const { ensureLessonDir } = await import("../src/storage.ts");
 const { adminCourseRoutes } = await import("../src/routes/admin-courses.ts");
@@ -155,7 +156,7 @@ test("database enforces test uniqueness, conditional parent FKs and generated co
 });
 
 test("lesson deletion cascades its test/questions/answers/attempts while retaining other content and event history", async () => {
-  await pool.query("insert into events(user_id,event_type,entity_type,entity_id) values($1,'test_attempt_start','attempt',$2)", [users[0], attemptId]);
+  await logEvent(users[0], "test_attempt_start", { entityType: "attempt", entityId: attemptId });
   assert.equal((await request("DELETE", `/admin/lessons/${lessons[0]}`)).statusCode, 200);
   for (const [table, id] of [["tests", tests[1]], ["questions", questions[2]], ["answers", answers[1]], ["test_attempts", attemptId]]) {
     assert.equal((await pool.query(`select id from ${table} where id=$1`, [id])).rowCount, 0);
