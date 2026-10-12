@@ -74,5 +74,7 @@ jobs:
         run: npm run migrate --workspace server
       - name: Check H15 read-only content preflight
         run: npm run check:content-integrity --workspace server
+      - name: Check H17 read-only attempt preflight
+        run: npm run check:attempt-integrity --workspace server
       - name: Run integration tests
         run: npm test
