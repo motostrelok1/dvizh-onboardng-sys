@@ -244,7 +244,7 @@
 
 ## Решения и заметки
 ### SEC-11 — runtime-валидация API и безопасные ошибки (2026-10-12)
-- [~] Строгие JSON Schema body/params/query в auth/admin-users/admin-tests/
+- [x] Строгие JSON Schema body/params/query в auth/admin-users/admin-tests/
   admin-attachments: UUID, типы без coercion, IANA timezone, email/строки,
   passScore 0…100, положительный int32 maxAttempts или null, запрет лишних
   полей. Response DTO исключают внутренние поля и file_path вложения.
@@ -253,8 +253,11 @@
   ответы сохраняются; password checks остаются после account budgets.
 - Добавлено 7 проверок без БД и 11 PostgreSQL/API-сценариев; общий набор
   140. Локально прошли сборка сервера/клиента/PWA, 39/39 тестов без БД,
-  компиляция всех схем и diff --check. Результат полного CI будет записан
-  после проверки. Ajv/форматы
+  компиляция всех схем и diff --check. CI на 9b81f4f: 140/140 без ошибок/
+  пропусков, миграции/повторный запуск, сервер/клиент/PWA и Nginx прошли.
+  PR #12: https://github.com/motostrelok1/dvizh-onboardng-sys/pull/12
+  CI: https://github.com/motostrelok1/dvizh-onboardng-sys/actions/runs/38204146306
+  Ajv/форматы
   закреплены в зависимостях без смены прежних версий; новой миграции нет.
 - VDS/рабочая БД не менялись. DEV-06 PATCH, DEV-01 попытки, CSRF и схемы
   остальных API-модулей — отдельные задачи; SEC-11 охватывает четыре модуля.
