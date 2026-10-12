@@ -1,16 +1,20 @@
 # Hardening по additions.md — подэтапы и журнал
 
-Статус: [ ] не начат · [~] в работе · [x] сделано и проверено
+Статус: [ ] не начат · [~] в работе · [x] реализовано и проверено в репозитории/CI.
 
-Порядок — по разделу «Предлагаемый порядок выполнения» в additions.md.
+[x] относится к названному подэтапу, не ко всем рекомендациям SEC/DEV и
+не к настройкам вашего VDS. Deployment и незакрытые части — DEPLOY.md и additions.md.
+
+Это фиксированный список H01–H19. Следующие работы и незакрытые части —
+[актуальный backlog](additions.md#актуальный-backlog); [DEPLOY](DEPLOY.md) отдельно.
 
 ## Подэтапы
-- [~] H01 Secure-флаг cookie в production
-- [ ] H02 SEC-03 docker-compose: БД не публикуется наружу, секрет из env
-- [ ] H03 SEC-01 is_active проверяется при каждом чтении сессии, отзыв сессий при отключении
-- [ ] H04 SEC-04 безопасный путь загруженного файла (UUID+ext, проверка lessonId до записи)
-- [ ] H05 SEC-05 проверка сигнатуры файла, безопасная отдача (nosniff, Content-Disposition)
-- [ ] H06 SEC-06 rate limit входа/приглашений
+- [x] H01 Secure-флаг cookie в production
+- [x] H02 SEC-03 docker-compose: БД не публикуется наружу, секрет из env
+- [x] H03 SEC-01 is_active проверяется при каждом чтении сессии, отзыв сессий при отключении
+- [x] H04 SEC-04 безопасный путь загруженного файла (UUID+ext, проверка lessonId до записи)
+- [x] H05 SEC-05 проверка сигнатуры файла, безопасная отдача (nosniff, Content-Disposition)
+- [x] H06 SEC-06 rate limit входа/приглашений
 - [x] H07 SEC-07 токен приглашения вне URL-пути (фрагмент/тело) + маскирование в логах
 - [x] H08 SEC-08 отзыв старых приглашений/сессий при повторном приглашении и смене пароля
 - [x] H09 SEC-09 проверка дедлайна в момент доступа, а не только по статусу
@@ -23,13 +27,27 @@
 - [x] H16 DEV-07 планировщик: защита от наложения запусков
 - [x] H17 DEV-01 серверная модель попыток теста — проверка текущего состояния test-attempts.ts
 - [x] H18 DEV-02 реальные серверные тесты + CI
-- [ ] H19 DEV-04 документация (README, DEPLOY, additions.md статусы)
+- [x] H19 DEV-04 документация (README, DEPLOY, additions.md статусы)
 
 Отдельно, вне этого списка (открытые вопросы, нужны решения пользователя или отдельная проработка):
 DEV-08 часовые пояса дедлайнов, DEV-10 дедупликация событий, DEV-11 UX,
 аудит зависимостей, защита видео, статус черновиков курса.
 
 ## Журнал
+- 2026-10-12: H19 проверен в PR #20: README/PROGRESS/additions/STAGE12 сверены с кодом;
+  DEPLOY.md объединяет development/production, stop/backup/preflight/migrate,
+  пути/systemd/Nginx, восстановление и границы deploy/backup scripts.
+  H01–H06 синхронизированы после аудита кода и CI main af820d7
+  (run 38247225491, 303/303 без ошибок/пропусков): Secure cookie/inactive
+  session, storage/content, rate-limit проверки присутствуют и проходят.
+  H02 проверен статически: loopback port и обязательный env-секрет Compose;
+  внешняя сеть/DB-role/права VDS не считаются проверенными.
+  Локально build/PWA, links/anchors и 24 bash blocks проверены; noEmit/
+  отсутствие generated JS после build подтверждены. Новых миграций/кода/
+  production-изменений нет. CI на 584c1ac (run 38249337062): 303/303
+  без ошибок/пропусков, миграции/повторный запуск/оба preflight,
+  JUnit gate/summary/upload, сервер/клиент/PWA и Nginx прошли. H19 [x].
+  Проверенный запуск: https://github.com/motostrelok1/dvizh-onboardng-sys/actions/runs/38249337062
 - 2026-10-12: H18 проверен в PR #19: 8 SQL/API-проверок уведомлений/подписок
   (owner scope, latest-50/unread, read/upsert/delete, session/Origin/safe error)
   и 8 проверок test-database guard/JUnit. Настоящий Node skip/TODO с exit 0

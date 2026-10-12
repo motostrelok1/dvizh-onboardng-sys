@@ -2,11 +2,20 @@
 
 Статус: [ ] не начат · [~] в работе · [x] сделано и проверено · [P] запушено
 
+## Текущее состояние после H01–H18
+
+Это исторический журнал локальных работ 2026-10-11, не подтверждение
+развёртывания на вашем VDS. Текущий вход — /invite#token с POST body API
+(legacy path поддержан); Nginx privacy обновлён SEC-07, Origin — H12,
+серверные проверки — H18. Числа/GET token endpoints и старые описания ниже
+относятся к моменту записи. Актуальные инструкции — [DEPLOY.md](DEPLOY.md),
+статусы — [HARDENING.md](HARDENING.md), backlog — [additions.md](additions.md).
+
 ## Подэтапы
 - [x] 12.1 Манифест + иконки (client/public/icons, manifest в vite.config)
 - [x] 12.2 Service worker: precache оболочки (vite-plugin-pwa, injectManifest), push/клик из sw.ts
 - [x] 12.3 Регистрация SW + баннер «нет сети»
-- [x] 12.4 Экран приглашения /invite/<токен> (вход по ссылке)
+- [x] 12.4 Экран приглашения (сейчас /invite#token, legacy path поддержан)
 - [x] 12.5 Ссылка-приглашение в админке (полная ссылка + «копировать»)
 - [x] 12.6 Деплой: nginx.conf.example, lms.service, deploy.sh
 - [x] 12.7 Бэкап: backup.sh (pg_dump + uploads), проверка восстановления
