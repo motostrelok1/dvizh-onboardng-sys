@@ -9,13 +9,16 @@ import {
 import { checkCourseAccess, getCourseIdForAttachment } from "../access.js";
 import { logEvent } from "../events.js";
 import { attachmentContentType, hasAllowedFileContent } from "../file-content.js";
+import { installApiValidation, schema, idParams, attachmentDto, okDto, success } from "../api-validation.js";
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 МБ — стартовый лимит, см. SPEC §18
 
 export async function adminAttachmentRoutes(app: FastifyInstance) {
+  installApiValidation(app);
   app.post<{ Params: { lessonId: string } }>(
     "/admin/lessons/:lessonId/attachments",
-    { preHandler: requireAdmin },
+    { preHandler: requireAdmin, config: { validationError: "invalid_lesson_id" },
+      schema: schema(undefined, idParams("lessonId"), success({ attachment: attachmentDto })) },
     async (req, reply) => {
       const lessonId = req.params.lessonId.toLowerCase();
       if (!isValidLessonId(lessonId)) {
@@ -28,7 +31,16 @@ export async function adminAttachmentRoutes(app: FastifyInstance) {
         return { error: "lesson_not_found" };
       }
 
-      const file = await req.file({ limits: { fileSize: MAX_FILE_SIZE } });
+      let file;
+      try {
+        file = await req.file({ limits: { fileSize: MAX_FILE_SIZE } });
+      } catch (err: any) {
+        // Busboy boundary/grammar errors do not always have a status/code.
+        // Classify parser failures here, before any filesystem write; keep
+        // explicit unsupported-media and size-limit responses via the handler.
+        if (err.statusCode === 406 || err.statusCode === 413) throw err;
+        return reply.code(400).send({ error: "invalid_request" });
+      }
       if (!file) {
         reply.code(400);
         return { error: "file_required" };
@@ -84,7 +96,7 @@ export async function adminAttachmentRoutes(app: FastifyInstance) {
 
   app.delete<{ Params: { id: string } }>(
     "/admin/attachments/:id",
-    { preHandler: requireAdmin },
+    { preHandler: requireAdmin, schema: schema(undefined, idParams(), { "2xx": okDto }) },
     async (req) => {
       const res = await pool.query(`select lesson_id, file_path from lesson_attachments where id = $1`, [req.params.id]);
       const row = res.rows[0];
@@ -101,7 +113,7 @@ export async function adminAttachmentRoutes(app: FastifyInstance) {
   // записан на курс из открытого каталога).
   app.get<{ Params: { id: string } }>(
     "/attachments/:id/download",
-    { preHandler: requireAuth },
+    { preHandler: requireAuth, schema: schema(undefined, idParams()) },
     async (req, reply) => {
       const res = await pool.query(`select * from lesson_attachments where id = $1`, [req.params.id]);
       const row = res.rows[0];

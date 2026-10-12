@@ -2,11 +2,15 @@ import type { FastifyInstance } from "fastify";
 import { pool } from "../db.js";
 import { requireAdmin } from "../auth/middleware.js";
 import { createInvitation, revokeInvitation, AuthError } from "../auth/service.js";
+import { installApiValidation, schema, object, text, email, timezone, nullableUuid,
+  boolean, idParams, adminUserDto, okDto, success } from "../api-validation.js";
 
 export async function adminUserRoutes(app: FastifyInstance) {
+  installApiValidation(app);
   app.addHook("preHandler", requireAdmin);
 
-  app.get("/admin/users", async () => {
+  app.get("/admin/users", { schema: schema(undefined, undefined,
+    success({ users: { type: "array", items: adminUserDto } })) }, async () => {
     const res = await pool.query(
       `select u.id, u.full_name, u.email, u.role, u.department_id, d.name as department_name,
               u.timezone, u.is_active, u.created_at
@@ -19,7 +23,8 @@ export async function adminUserRoutes(app: FastifyInstance) {
 
   app.post<{
     Body: { fullName: string; email: string; departmentId?: string; timezone?: string };
-  }>("/admin/users", async (req, reply) => {
+  }>("/admin/users", { schema: schema(object({ fullName: text(256), email, departmentId: nullableUuid, timezone },
+    ["fullName", "email"]), undefined, success({ user: adminUserDto })) }, async (req, reply) => {
     const { fullName, email, departmentId, timezone } = req.body;
     if (!fullName || !email) {
       reply.code(400);
@@ -46,7 +51,8 @@ export async function adminUserRoutes(app: FastifyInstance) {
   app.patch<{
     Params: { id: string };
     Body: { fullName?: string; departmentId?: string | null; timezone?: string; isActive?: boolean };
-  }>("/admin/users/:id", async (req) => {
+  }>("/admin/users/:id", { schema: schema({ ...object({ fullName: text(256), departmentId: nullableUuid,
+    timezone, isActive: boolean }), minProperties: 1 }, idParams(), success({ user: adminUserDto })) }, async (req) => {
     const { fullName, departmentId, timezone, isActive } = req.body;
     const client = await pool.connect();
     try {
@@ -78,7 +84,8 @@ export async function adminUserRoutes(app: FastifyInstance) {
   });
 
   // Выпустить новую ссылку-приглашение сотруднику
-  app.post<{ Params: { id: string } }>("/admin/users/:id/invitations", async (req, reply) => {
+  app.post<{ Params: { id: string } }>("/admin/users/:id/invitations", { schema: schema(undefined, idParams(),
+    success({ token: { type: "string" }, expiresAt: { type: "string" }, link: { type: "string" } })) }, async (req, reply) => {
     try {
       const { token, expiresAt } = await createInvitation(req.params.id, req.currentUser!.id);
       return { token, expiresAt, link: `/invite#${token}` };
@@ -88,7 +95,8 @@ export async function adminUserRoutes(app: FastifyInstance) {
     }
   });
 
-  app.delete<{ Params: { id: string } }>("/admin/invitations/:id", async (req) => {
+  app.delete<{ Params: { id: string } }>("/admin/invitations/:id", {
+    schema: schema(undefined, idParams(), { "2xx": okDto }) }, async (req) => {
     await revokeInvitation(req.params.id);
     return { ok: true };
   });

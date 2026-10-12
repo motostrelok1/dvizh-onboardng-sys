@@ -1,6 +1,7 @@
 import "dotenv/config";
 import Fastify from "fastify";
 import { installPrivacyHeaders, privateLogger } from "./privacy.js";
+import { installApiErrors } from "./api-validation.js";
 import cookie from "@fastify/cookie";
 import multipart from "@fastify/multipart";
 import { healthRoutes } from "./routes/health.js";
@@ -26,6 +27,7 @@ import { startDeadlineChecker } from "./jobs/deadlines.js";
 
 const app = Fastify({ logger: privateLogger });
 installPrivacyHeaders(app);
+installApiErrors(app);
 
 await app.register(cookie);
 await app.register(multipart);

@@ -13,6 +13,7 @@ import { ensureReportsUpToYesterday } from "../jobs/reports.js";
 import { pool } from "../db.js";
 import { hashToken } from "../auth/crypto.js";
 import { AUTH_ACCOUNT_MAX, enforceAuthLimit, limitAuthIp, limitInvitationLookup } from "../auth/rate-limit.js";
+import { installApiValidation, schema, object, token as tokenSchema, publicUserDto, okDto, success } from "../api-validation.js";
 
 function validToken(token: string): boolean {
   return /^[A-Za-z0-9_-]{1,128}$/.test(token);
@@ -33,8 +34,11 @@ function setSessionCookie(reply: any, token: string) {
 }
 
 export async function authRoutes(app: FastifyInstance) {
+  installApiValidation(app);
   // Проверить ссылку-приглашение (для экрана «задать пароль»)
-  app.post<{ Body: unknown }>("/auth/invitations/check", { onRequest: limitInvitationLookup, bodyLimit: 8 * 1024 }, async (req, reply) => {
+  app.post<{ Body: unknown }>("/auth/invitations/check", { onRequest: limitInvitationLookup, bodyLimit: 8 * 1024,
+    schema: schema(object({ token: tokenSchema }, ["token"]), undefined,
+      success({ valid: { type: "boolean" }, fullName: { type: "string" }, email: { type: ["string", "null"] } })) }, async (req, reply) => {
     const token = bodyObject(req.body)?.token;
     if (typeof token !== "string" || !validToken(token)) return reply.code(400).send({ error: "invalid_request" });
     const status = await getInvitationStatus(token);
@@ -48,7 +52,10 @@ export async function authRoutes(app: FastifyInstance) {
   // Принять приглашение: задать пароль, сразу войти
   app.post<{ Body: unknown }>(
     "/auth/invitations/accept",
-    { onRequest: limitAuthIp, bodyLimit: 8 * 1024 },
+    { onRequest: limitAuthIp, bodyLimit: 8 * 1024,
+      // Password byte/minimum checks stay after token/account budgets (SEC-06).
+      schema: schema(object({ token: tokenSchema, password: { type: "string", maxLength: 1024 } },
+        ["token", "password"]), undefined, { "2xx": okDto }) },
     async (req, reply) => {
       const body = bodyObject(req.body);
       const token = body?.token;
@@ -82,7 +89,11 @@ export async function authRoutes(app: FastifyInstance) {
   );
 
   // Вход по email/паролю (для тех, кто уже принял приглашение)
-  app.post<{ Body: unknown }>("/auth/login", { onRequest: limitAuthIp, bodyLimit: 8 * 1024 }, async (req, reply) => {
+  app.post<{ Body: unknown }>("/auth/login", { onRequest: limitAuthIp, bodyLimit: 8 * 1024,
+    // Keep bounded legacy email/password login behavior; new user emails use format validation.
+    schema: schema(object({ email: { type: "string", minLength: 1, maxLength: 254, pattern: "\\S" },
+      password: { type: "string", minLength: 1, maxLength: 1024 } }, ["email", "password"]),
+      undefined, success({ user: publicUserDto })) }, async (req, reply) => {
     const body = bodyObject(req.body);
     if (!body || typeof body.email !== "string" || !body.email.trim() || body.email.length > 254) {
       return reply.code(400).send({ error: "invalid_request" });
@@ -108,7 +119,7 @@ export async function authRoutes(app: FastifyInstance) {
     }
   });
 
-  app.post("/auth/logout", async (req, reply) => {
+  app.post("/auth/logout", { schema: schema(undefined, undefined, { "2xx": okDto }) }, async (req, reply) => {
     const token = req.cookies[SESSION_COOKIE];
     if (token) {
       const user = await getUserBySession(token);
@@ -119,7 +130,7 @@ export async function authRoutes(app: FastifyInstance) {
     return { ok: true };
   });
 
-  app.get("/auth/me", async (req, reply) => {
+  app.get("/auth/me", { schema: schema(undefined, undefined, success({ user: publicUserDto })) }, async (req, reply) => {
     const token = req.cookies[SESSION_COOKIE];
     const user = token ? await getUserBySession(token) : null;
     if (!user) {
