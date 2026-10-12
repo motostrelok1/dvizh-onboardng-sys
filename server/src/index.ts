@@ -3,7 +3,7 @@ import Fastify from "fastify";
 import { installPrivacyHeaders, privateLogger } from "./privacy.js";
 import cookie from "@fastify/cookie";
 import multipart from "@fastify/multipart";
-import { checkDb, pool } from "./db.js";
+import { healthRoutes } from "./routes/health.js";
 import { authRoutes } from "./routes/auth.js";
 import { adminUserRoutes } from "./routes/admin-users.js";
 import { adminDepartmentRoutes } from "./routes/admin-departments.js";
@@ -46,34 +46,7 @@ await app.register(adminReportRoutes);
 await app.register(adminNotificationRuleRoutes);
 await app.register(publicPushRoutes);
 await app.register(notificationRoutes);
-
-app.get("/health", async () => {
-  return { status: "ok" };
-});
-
-app.get("/health/db", async (_req, reply) => {
-  try {
-    const ok = await checkDb();
-    return { db: ok ? "ok" : "fail" };
-  } catch (err) {
-    app.log.error(err);
-    reply.code(500);
-    return { db: "fail" };
-  }
-});
-
-app.get("/health/tables", async (_req, reply) => {
-  try {
-    const res = await pool.query(
-      "select table_name from information_schema.tables where table_schema = 'public' order by table_name"
-    );
-    return { tables: res.rows.map((r) => r.table_name) };
-  } catch (err) {
-    app.log.error(err);
-    reply.code(500);
-    return { tables: [] };
-  }
-});
+await app.register(healthRoutes);
 
 const port = Number(process.env.PORT ?? 3000);
 
