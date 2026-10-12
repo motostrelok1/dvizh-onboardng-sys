@@ -1,20 +1,20 @@
-import { pool } from "./db.js";
+import { pool, type DbExecutor } from "./db.js";
 
 // Прогресс считается из журнала событий (этап 8), а не хранится отдельно:
 // «пройден» урок = по нему есть хотя бы одно событие lesson_view_start.
 // Это грубая метрика (не учитывает тесты и глубину просмотра видео), но она
 // честная и не требует отдельного поля, которое могло бы разойтись с логом.
 
-export async function getCourseLessonCount(courseId: string): Promise<number> {
-  const res = await pool.query(
+export async function getCourseLessonCount(courseId: string, executor: DbExecutor = pool): Promise<number> {
+  const res = await executor.query(
     `select count(*)::int as n from lessons l join modules m on m.id = l.module_id where m.course_id = $1`,
     [courseId]
   );
   return res.rows[0].n;
 }
 
-export async function getViewedLessonCount(userId: string, courseId: string): Promise<number> {
-  const res = await pool.query(
+export async function getViewedLessonCount(userId: string, courseId: string, executor: DbExecutor = pool): Promise<number> {
+  const res = await executor.query(
     `select count(distinct e.entity_id)::int as n
      from events e
      join lessons l on l.id = e.entity_id
@@ -25,11 +25,10 @@ export async function getViewedLessonCount(userId: string, courseId: string): Pr
   return res.rows[0].n;
 }
 
-export async function getCourseProgress(userId: string, courseId: string) {
-  const [total, viewed] = await Promise.all([
-    getCourseLessonCount(courseId),
-    getViewedLessonCount(userId, courseId)
-  ]);
+export async function getCourseProgress(userId: string, courseId: string, executor: DbExecutor = pool) {
+  const [total, viewed] = executor === pool ? await Promise.all([
+    getCourseLessonCount(courseId, executor), getViewedLessonCount(userId, courseId, executor)
+  ]) : [await getCourseLessonCount(courseId, executor), await getViewedLessonCount(userId, courseId, executor)];
   const percent = total > 0 ? Math.round((viewed / total) * 100) : 0;
   return { totalLessons: total, viewedLessons: viewed, percent };
 }
