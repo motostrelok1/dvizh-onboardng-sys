@@ -18,7 +18,10 @@ export const flush = queue.flush;
 
 if (typeof window !== "undefined") {
   window.addEventListener("online", () => void flush());
-  window.addEventListener("storage", () => void flush());
+  window.addEventListener("storage", event => {
+    if (event.key === "lms_event_owner_v2") queue.storageChanged(event.newValue);
+    void flush();
+  });
   window.addEventListener("pagehide", queue.pagehide);
   setInterval(() => void flush(), 15_000);
 }

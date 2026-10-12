@@ -52,7 +52,14 @@ export function createEventQueue(env: Environment) {
     try { if (id) env.storage().setItem(OWNER, id); else env.storage().removeItem(OWNER); shared = true; } catch { shared = false; }
   }
   function pause() { owner = null; epoch++; }
-  function current() { return owner !== null && sharedOwner() === owner; }
+  function storageChanged(value: string | null) {
+    if (owner && value !== owner) { owner = null; lastOwner = null; epoch++; memory.clear(); }
+  }
+  function current() {
+    const marker = sharedOwner();
+    storageChanged(marker);
+    return owner !== null && marker === owner;
+  }
   function pending() {
     if (!current()) return [];
     const all = new Map(memory);
@@ -115,5 +122,5 @@ export function createEventQueue(env: Environment) {
     try { env.beacon(new Blob([JSON.stringify({ ownerId: owner, events })], { type: "application/json" })); }
     catch { /* Sending/queueing a beacon is never a server ACK. */ }
   }
-  return { setOwner, pause, enqueue, pending, flush, pagehide };
+  return { setOwner, pause, storageChanged, enqueue, pending, flush, pagehide };
 }

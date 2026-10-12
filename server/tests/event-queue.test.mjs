@@ -102,6 +102,19 @@ test("storage failures keep an in-memory queue that can still flush", async () =
   await f.queue.flush();assert.equal(f.queue.pending().length,0);
 });
 
+test("an external logout invalidates a stale tab even when the same user signs in again", async () => {
+  const f=fixture();f.queue.setOwner(f.owner);f.enqueue();
+  f.queue.storageChanged(null);f.shared.set('lms_event_owner_v2',f.owner);
+  await f.queue.flush();f.queue.pagehide();assert.equal(f.calls.length+f.beacons.length,0);assert.equal(f.enqueue(),false);
+});
+
+test("authentication pause preserves memory-only IDs for the same user's confirmed login", async () => {
+  const f=fixture();f.storage.setItem=()=>{throw new Error('quota');};f.queue.setOwner(f.owner);f.enqueue();
+  const id=f.queue.pending()[0].eventId;f.respond(()=>new Response('{}',{status:401}));await f.queue.flush();
+  assert.equal(f.enqueue(),false);f.queue.setOwner(f.owner);assert.equal(f.queue.pending()[0].eventId,id);
+  f.respond(body=>f.reply(body.events.map(e=>e.eventId)));await f.queue.flush();assert.equal(f.queue.pending().length,0);
+});
+
 test("corrupt persisted entries are discarded and a full queue preserves existing IDs", () => {
   const f=fixture();f.queue.setOwner(f.owner);f.shared.set(`lms_event_v2:${f.owner}:${randomUUID()}`,'{broken');assert.equal(f.queue.pending().length,0);
   for(let i=0;i<MAX_EVENT_QUEUE;i++){const eventId=randomUUID();f.shared.set(`lms_event_v2:${f.owner}:${eventId}`,JSON.stringify({eventId,eventType:"lesson_view_start",entityId:f.lesson,occurredAt:new Date().toISOString()}));}
