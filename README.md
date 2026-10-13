@@ -22,8 +22,8 @@ GitHub Actions запускает `.github/workflows/ci.yml` на PR, main и в
 - **PostgreSQL and auth tests** — PostgreSQL 16, все миграции и повторный запуск,
   оба preflight, реальные Fastify inject/SQL проверки, JUnit gate/Summary/artifact.
 
-В PR #22 на fc8a1f7 проверено **372/372** без ошибок и пропусков:
-[CI 38356686289](https://github.com/motostrelok1/dvizh-onboardng-sys/actions/runs/38356686289).
+В PR #23 на 5eac679 проверено **399/399** без ошибок и пропусков:
+[CI 38382124194](https://github.com/motostrelok1/dvizh-onboardng-sys/actions/runs/38382124194).
 Набор включает auth/roles/revocation/rate limits, файлы, дедлайны, attempts,
 контент/назначения, jobs/reports, личные уведомления и события/offline-очередь. Подробная карта и
 локальный запуск — [server/tests/README.md](server/tests/README.md).
@@ -1049,3 +1049,9 @@ Default Nginx body buffer иначе может заполнить свой temp
 Первичные описания: [Node statfs](https://nodejs.org/docs/latest-v24.x/api/fs.html#fspromisesstatfspath-options),
 [PostgreSQL advisory locks](https://www.postgresql.org/docs/16/explicit-locking.html#ADVISORY-LOCKS),
 [Nginx request buffering](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_request_buffering).
+
+Проверено в PR #23: 27 новых Node-сценариев (16 без БД, 11 PostgreSQL/API),
+также actual Nginx early rejection; локально build/PWA и 145/145 без БД.
+[CI на 5eac679](https://github.com/motostrelok1/dvizh-onboardng-sys/actions/runs/38382124194) — 399/399
+без ошибок/пропусков, migrations/re-run/оба preflight, JUnit gate/summary/
+artifact, сервер/клиент/PWA и Nginx прошли. DEV-05.2 [x] в PROGRESS.md.

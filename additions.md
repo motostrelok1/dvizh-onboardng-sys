@@ -27,7 +27,7 @@ production-инструкции — DEPLOY.md. Старые описания у�
 | Приоритет | Задача | Что осталось |
 | --- | --- | --- |
 | P1, до внешнего запуска | Эксплуатация | Реальный домен/HTTPS, firewall для 3000/5432, права сервиса/БД, APP_ORIGIN, миграции H15/H17, staging/backup restore, Nginx/journald retention, branch protection |
-| P1 | SEC-05 / DEV-05 | Макросы/сканирование/карантин; квоты/alerting; DEV-05.2 concurrency/space в работе; crash/orphan reconciliation; DEV-05.1 cleanup queue выполнен; old orphan/.part отдельно |
+| P1 | SEC-05 / DEV-05 | Макросы/сканирование/карантин; квоты/alerting; DEV-05.2 concurrency/space выполнен; crash/orphan reconciliation; DEV-05.1 cleanup queue выполнен; old orphan/.part отдельно |
 | P1 | Зависимости/секреты | Lockfile/advisory audit, поддерживаемые runtime/framework, git-history secret scanning и политика хранения персональных данных |
 | P1 | Видео/черновики | Выбрать провайдера/защиту URL/CSP; согласовать доступ к draft для назначенного сотрудника |
 | P1–P2 | DEV-10 события | DEV-10.1 выполнен: доступ/лимиты/eventId/ACK/owner очередь; heartbeat, проверенная длительность и browser offline/E2E остаются |
@@ -250,11 +250,15 @@ CI: npm ci → server build → реальные tests → client build. Доп�
 
 ### DEV-05 — Надёжность загрузок — P1
 
-**DEV-05.2 (2026-10-13) [~]:** session advisory slots по root/DB, default 2,
+**DEV-05.2 (2026-10-13) [x]:** session advisory slots по root/DB, default 2,
 statfs admission budget + floor 256 МиБ и chunk guards; cancellation/deadline/
 stop/drain/permit release. UI объясняет 429/507/503/408. Nginx request buffering
 отключён в example и дополнена actual proxy проверка early 429. Новых миграций
-нет, все backend/client/proxy/env обновлять совместно. Полный CI ожидается.
+нет, все backend/client/proxy/env обновлять совместно. Добавлено 27 Node
+сценариев (16 без БД, 11 PostgreSQL/API), также actual Nginx early rejection.
+[CI на 5eac679](https://github.com/motostrelok1/dvizh-onboardng-sys/actions/runs/38382124194) — 399/399
+без ошибок/пропусков, migrations/re-run/preflight/JUnit/artifact/build/PWA/Nginx;
+DEV-05.2 отмечен [x] в PROGRESS, PR #23.
 Локально build/PWA и 145/145 без БД прошли. Пер-user/course quotas, alerting и
 legacy/.part/uncertain COMMIT reconciliation остаются открытыми; VDS не менялся.
 

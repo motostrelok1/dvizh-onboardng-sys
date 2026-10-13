@@ -19,7 +19,7 @@
 ## Актуальный статус
 
 Код этапов 0–12 и подэтапы H01–H19 реализованы и проверены в репозитории/CI.
-DEV-10.1 и DEV-05.1 выполнены; проверено 372/372 в [CI PR #22 на fc8a1f7](https://github.com/motostrelok1/dvizh-onboardng-sys/actions/runs/38356686289)
+DEV-10.1, DEV-05.1 и DEV-05.2 выполнены; проверено 399/399 в [CI PR #23 на 5eac679](https://github.com/motostrelok1/dvizh-onboardng-sys/actions/runs/38382124194)
 (2026-10-13), без ошибок/пропусков.
 [Чек-лист и CI](HARDENING.md), [незакрытые рекомендации](additions.md#актуальный-backlog).
 Старые записи ниже описывают результат своего этапа; последующие H имеют
@@ -280,7 +280,7 @@ DEV-10.1 и DEV-05.1 выполнены; проверено 372/372 в [CI PR #2
       очищает только удалённые файлы; rollback не трогает диск; crash/ошибка
       сохраняет retry; live references/unsafe paths защищены; build/CI прошли.
 
-- [~] DEV-05.2 — лимиты параллельных загрузок и свободного места
+- [x] DEV-05.2 — лимиты параллельных загрузок и свободного места
       Спецификация: docs/SPEC.md §3, §18 (сохраняются текущие типы/50 МиБ);
       additions.md DEV-05. Куда: server/src/upload-capacity.ts, receiver,
       storage, admin-attachments, index, server/.env.example, server/tests;
@@ -292,7 +292,7 @@ DEV-10.1 и DEV-05.1 выполнены; проверено 372/372 в [CI PR #2
 
 ## Решения и заметки
 ### DEV-05.2 — ресурсы загрузки (2026-10-13)
-- Подготовлены PostgreSQL session advisory slots по canonical UPLOAD_DIR,
+- Реализованы PostgreSQL session advisory slots по canonical UPLOAD_DIR,
   отдельный namespace от jobs. По умолчанию 2 uploads, максимум env 8;
   permit удерживается через receive/format/SQL/cleanup, не только INSERT.
 - statfs bigint/bavail: admission требует floor + 50 МиБ на каждый занятый
@@ -308,8 +308,12 @@ DEV-10.1 и DEV-05.1 выполнены; проверено 372/372 в [CI PR #2
   чтобы guard начал работать до полного тела; native Nginx test проверяет
   ранний отказ после части объявленного 1 МиБ. Реальный vhost не менялся.
 - Локально build/PWA и 145/145 без БД прошли, включая native HTTP partial
-  cleanup; SQL/API тесты двух независимых gate/connection loss подготовлены.
-  Полный CI ожидается; новой миграции нет. Все backend должны иметь одну
+  cleanup. Добавлено 27 Node-сценариев (16 без БД, 11 PostgreSQL/API),
+  плюс actual Nginx early-body rejection. CI на 5eac679: 399/399 без ошибок/
+  пропусков, migrations/re-run/оба preflight, JUnit gate/summary/artifact,
+  server/client/PWA и Nginx прошли. DEV-05.2 [x], PR #23.
+  Проверенный запуск: https://github.com/motostrelok1/dvizh-onboardng-sys/actions/runs/38382124194
+  Новой миграции нет. Все backend должны иметь одну
   БД/root/настройки. Квоты пользователя/курса, alerting, orphan/.part/uncertain
   COMMIT reconciliation остаются DEV-05; VDS не менялся.
 
