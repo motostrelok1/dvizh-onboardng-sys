@@ -255,7 +255,7 @@ statfs admission budget + floor 256 МиБ и chunk guards; cancellation/deadlin
 stop/drain/permit release. UI объясняет 429/507/503/408. Nginx request buffering
 отключён в example и дополнена actual proxy проверка early 429. Новых миграций
 нет, все backend/client/proxy/env обновлять совместно. Полный CI ожидается.
-Локально build/PWA и 143/143 без БД прошли. Пер-user/course quotas, alerting и
+Локально build/PWA и 145/145 без БД прошли. Пер-user/course quotas, alerting и
 legacy/.part/uncertain COMMIT reconciliation остаются открытыми; VDS не менялся.
 
 

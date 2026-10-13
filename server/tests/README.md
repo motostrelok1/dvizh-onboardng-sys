@@ -11,7 +11,7 @@
 | Вход, приглашения, сессии, роли | auth.integration, auth-recovery.integration, auth-rate-limit.integration | 401/403, отключение, expiry/revocation, атомарность, лимиты, конкуренция |
 | Приватность и API | api-validation, csrf, privacy, health (+ integration) | строгие схемы, safe errors/DTO, Origin, no-store, приватные логи |
 | Файлы | storage, file-content, attachments.integration, upload-staging, upload-receiver, upload-reliability.integration | структура/пути, symlink/коллизии, multipart/обрыв, rollback/COMMIT ambiguity |
-| Ресурсы загрузки | upload-capacity (+ integration), upload-receiver | shared PG slots, statfs/budget, busy/full/abort/timeout/drain/session loss; настоящий chunked HTTP/partial cleanup |
+| Ресурсы загрузки | upload-capacity (+ integration), upload-receiver, upload-root-probe | shared PG slots, statfs/budget, busy/full/abort/timeout/drain/session loss; настоящий chunked HTTP/partial cleanup |
 | Удаление файлов | attachment-cleanup (+ integration) | transactional cascade/rollback, durable retry/ENOENT, live paths, unsafe/symlink/missing root, locks/batch/drain/migration |
 | Дедлайны и доступ | deadlines.integration | время БД, completed/overdue, перенос, чужая попытка, job event |
 | Контент/назначения | data-integrity.integration, content-integrity-migration.integration, patch.integration | parent/position locks, constraints/cascade, атомарные assignments, PATCH missing/null |

@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { statfs } from "node:fs/promises";
 import type { Pool, PoolClient } from "pg";
 import { pool } from "./db.js";
-import { ensureUploadRoot, checkedUploadRoot, StoragePathError } from "./storage.js";
+import { inspectUploadRoot, StoragePathError } from "./storage.js";
 import { MAX_FILE_SIZE } from "./upload-receiver.js";
 
 export type UploadLimits = { maxConcurrent: number; minFreeBytes: bigint; timeoutMs: number };
@@ -28,8 +28,9 @@ export function uploadLockNamespace(root: string): number {
   return 0x50000000 | (createHash("sha256").update(root).digest().readUInt32BE(0) & 0x0fffffff);
 }
 export async function availableUploadBytes(root: string): Promise<bigint> {
-  if (await checkedUploadRoot() !== root) throw new StoragePathError();
-  const fs = await statfs(root,{bigint:true});
+  const inspected = await inspectUploadRoot();
+  if (inspected.root !== root) throw new StoragePathError();
+  const fs = await statfs(inspected.probe,{bigint:true});
   if (fs.bavail < 0n || fs.bsize <= 0n) throw new Error("invalid_storage_capacity");
   return fs.bavail * fs.bsize; // available to the service, not root-reserved blocks
 }
@@ -41,7 +42,7 @@ type Options = {
 
 export function createUploadCapacity(options: Options = {}) {
   const database = options.database ?? pool, limits = options.limits ?? readUploadLimits();
-  const prepare = options.prepare ?? ensureUploadRoot, available = options.available ?? availableUploadBytes;
+  const prepare = options.prepare ?? (async () => (await inspectUploadRoot()).root), available = options.available ?? availableUploadBytes;
   const pending = new Set<Promise<unknown>>(), controllers = new Set<AbortController>();
   let stopping = false;
   function capacityError(error: unknown) {

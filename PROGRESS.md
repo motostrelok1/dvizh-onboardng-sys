@@ -298,14 +298,16 @@ DEV-10.1 и DEV-05.1 выполнены; проверено 372/372 в [CI PR #2
 - statfs bigint/bavail: admission требует floor + 50 МиБ на каждый занятый
   slot; default floor 256 МиБ. Проверка перед chunk write и публикацией;
   ENOSPC/EDQUOT → 507 storage_full, unavailable → private 503. Числа/пути
-  не выдаются клиенту. Logical budget не является физическим резервированием.
+  не выдаются клиенту. Readonly root/parent probe не создаёт каталог для
+  некорректного upload; canonical identity стабильна до/после mkdir.
+  Logical budget не является физическим резервированием.
 - Deadline signal по умолчанию 120 секунд, abort при разрыве клиента/PG,
   освобождение или discard неизвестного session lock, stop/drain до pool.end.
 - Admin upload показывает busy/full/timeout/unavailable, блокирует input
   до завершения. Nginx example отключает request buffering при HTTP/1.1,
   чтобы guard начал работать до полного тела; native Nginx test проверяет
   ранний отказ после части объявленного 1 МиБ. Реальный vhost не менялся.
-- Локально build/PWA и 143/143 без БД прошли, включая native HTTP partial
+- Локально build/PWA и 145/145 без БД прошли, включая native HTTP partial
   cleanup; SQL/API тесты двух независимых gate/connection loss подготовлены.
   Полный CI ожидается; новой миграции нет. Все backend должны иметь одну
   БД/root/настройки. Квоты пользователя/курса, alerting, orphan/.part/uncertain

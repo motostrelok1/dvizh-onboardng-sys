@@ -101,6 +101,31 @@ export async function checkedUploadRoot(): Promise<string> {
   return root;
 }
 
+// Admission must be read-only: malformed MIME/extension must not mkdir uploads.
+// A new root will be created on its nearest existing parent's filesystem only
+// after the receiver has accepted the file extension. Canonical identity stays
+// the same before and after that mkdir, including configured ancestor aliases.
+export async function inspectUploadRoot(): Promise<{ root: string; probe: string }> {
+  let probe = UPLOAD_DIR;
+  while (true) {
+    try {
+      const stat = await lstat(probe);
+      if (probe === UPLOAD_DIR && (!stat.isDirectory() || stat.isSymbolicLink())) throw new StoragePathError();
+      const actual = await realpath(probe);
+      if (!(await lstat(actual)).isDirectory()) throw new StoragePathError();
+      const root = resolve(actual,relative(probe,UPLOAD_DIR));
+      if (probe === UPLOAD_DIR) {
+        try { await assertDirectory(join(UPLOAD_DIR,"lessons"),join(root,"lessons")); }
+        catch (error: any) { if (error.code !== "ENOENT") throw error; }
+      }
+      return { root, probe: actual };
+    } catch (error: any) {
+      if (error.code !== "ENOENT" || dirname(probe) === probe) throw error;
+      probe = dirname(probe);
+    }
+  }
+}
+
 export async function openNewAttachment(lessonId: string, storedName: string) {
   const diskPath = attachmentPath(lessonId, storedName);
   await assertLessonDirectories(lessonId);
