@@ -2,14 +2,15 @@ import type { FastifyInstance } from "fastify";
 import { pool } from "../db.js";
 import { requireAdmin, requireAuth } from "../auth/middleware.js";
 import {
-  isValidLessonId, openAttachmentForRead, removeAttachmentFile
+  isValidLessonId, openAttachmentForRead, validateAttachmentDeletion
 } from "../storage.js";
 import { checkCourseAccess, getCourseIdForAttachment } from "../access.js";
 import { logEvent } from "../events.js";
 import { attachmentContentType, hasAllowedFileContent } from "../file-content.js";
 import { installApiValidation, schema, idParams, attachmentDto, okDto, success } from "../api-validation.js";
 import { receiveAttachment, UploadReceiveError } from "../upload-receiver.js";
-import { nextPosition } from "../data-integrity.js";
+import { nextPosition, withTransaction } from "../data-integrity.js";
+import { runAttachmentCleanup } from "../jobs/attachment-cleanup.js";
 
 export async function adminAttachmentRoutes(app: FastifyInstance) {
   installApiValidation(app);
@@ -92,12 +93,19 @@ export async function adminAttachmentRoutes(app: FastifyInstance) {
     "/admin/attachments/:id",
     { preHandler: requireAdmin, schema: schema(undefined, idParams(), { "2xx": okDto }) },
     async (req) => {
-      const res = await pool.query(`select lesson_id, file_path from lesson_attachments where id = $1`, [req.params.id]);
-      const row = res.rows[0];
-      if (row) {
-        await removeAttachmentFile(row.lesson_id, row.file_path);
-        await pool.query(`delete from lesson_attachments where id = $1`, [req.params.id]);
-      }
+      await withTransaction(async client => {
+        const res = await client.query(`select lesson_id,file_path from lesson_attachments where id=$1 for update`, [req.params.id]);
+        const row = res.rows[0];
+        if (!row) return;
+        await validateAttachmentDeletion(row.lesson_id,row.file_path);
+        // The trigger captures OLD metadata in this same transaction.
+        // Never unlink before the DELETE/COMMIT succeeds.
+        await client.query(`delete from lesson_attachments where id=$1`, [req.params.id]);
+      });
+      // Best effort for this attachment only; durable background retry handles
+      // lock/storage/SQL faults or process exit after the committed DELETE.
+      try { await runAttachmentCleanup(req.params.id); }
+      catch { req.log.error({ event: "attachment_cleanup", category: "deferred" }, "operation_failed"); }
       return { ok: true };
     }
   );

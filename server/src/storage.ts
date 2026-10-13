@@ -157,3 +157,25 @@ export async function removeAttachmentFile(lessonId: string, storedPath: string)
     if (error.code !== "ENOENT") throw error;
   }
 }
+
+// Read-only precheck. Missing leaf/lesson is harmless, but an unavailable
+// storage root must never be acknowledged as a successfully removed file.
+export async function validateAttachmentDeletion(lessonId: string, storedPath: string) {
+  const diskPath = checkedAttachmentPath(lessonId, storedPath);
+  const root = await assertDirectory(UPLOAD_DIR);
+  await assertDirectory(join(UPLOAD_DIR, "lessons"), join(root, "lessons"));
+  try {
+    await assertDirectory(lessonDirectory(lessonId), join(root, "lessons", lessonId.toLowerCase()));
+    const stat = await lstat(diskPath);
+    if (!stat.isFile() || stat.isSymbolicLink()) throw new StoragePathError();
+  } catch (error: any) {
+    if (error.code !== "ENOENT") throw error;
+  }
+}
+
+export async function removeQueuedAttachmentFile(lessonId: string, storedPath: string) {
+  await validateAttachmentDeletion(lessonId, storedPath);
+  await removeAttachmentFile(lessonId, storedPath);
+  // A disappearing root during unlink must retain the durable job too.
+  await validateAttachmentDeletion(lessonId, storedPath);
+}

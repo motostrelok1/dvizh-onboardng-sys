@@ -1,8 +1,8 @@
 import type { Pool, PoolClient } from "pg";
 import { pool } from "../db.js";
 
-export type JobName = "deadlines" | "reports" | "notifications";
-const keys: Record<JobName, number> = { deadlines: 1, reports: 2, notifications: 3 };
+export type JobName = "deadlines" | "reports" | "notifications" | "attachment_cleanup";
+const keys: Record<JobName, number> = { deadlines: 1, reports: 2, notifications: 3, attachment_cleanup: 4 };
 const namespace = 0x4c4d53;
 
 export class JobUnavailableError extends Error {

@@ -18,6 +18,7 @@ const { createSession } = await import("../src/auth/service.ts");
 const { SESSION_COOKIE } = await import("../src/auth/constants.ts");
 const { adminAttachmentRoutes } = await import("../src/routes/admin-attachments.ts");
 const { ensureLessonDir, UPLOAD_DIR } = await import("../src/storage.ts");
+const { runAttachmentCleanup } = await import("../src/jobs/attachment-cleanup.ts");
 const app = Fastify();
 const { installPrivacyHeaders } = await import("../src/privacy.ts");
 installPrivacyHeaders(app);
@@ -186,6 +187,16 @@ test("ordinary legacy attachments still download and delete", async () => {
   const response = await app.inject({ method: "DELETE", url: `/admin/attachments/${id}`, cookies: adminCookies });
   assert.equal(response.statusCode, 200);
   assert.equal(await attachmentCount(), 0);
+  // A concurrent upload may make the NOWAIT best-effort cleanup defer. With
+  // the scheduler deliberately disabled in tests, drive the real scoped retry.
+  const retryUntil = Date.now() + 5000;
+  while ((await pool.query("select id from attachment_file_cleanup where attachment_id=$1", [id])).rowCount) {
+    assert.ok(Date.now() < retryUntil, "committed attachment cleanup did not complete");
+    await runAttachmentCleanup(id).catch(error => {
+      if (!["55P03", "job_in_progress"].includes(error.code)) throw error;
+    });
+    await new Promise(resolve => setTimeout(resolve, 10));
+  }
   await assert.rejects(lstat(path), { code: "ENOENT" });
 });
 
