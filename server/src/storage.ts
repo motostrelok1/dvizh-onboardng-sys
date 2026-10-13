@@ -80,14 +80,25 @@ async function assertLessonDirectories(lessonId: string) {
 
 export async function ensureLessonDir(lessonId: string): Promise<string> {
   const lessonDir = lessonDirectory(lessonId); // validate before any mkdir
+  const root = await ensureUploadRoot();
+  await mkdirPrivate(lessonDir);
+  await assertDirectory(lessonDir, join(root, "lessons", lessonId.toLowerCase()));
+  return lessonDir;
+}
+
+export async function ensureUploadRoot(): Promise<string> {
   await mkdirPrivate(UPLOAD_DIR, true);
   const root = await assertDirectory(UPLOAD_DIR);
   const lessonsDir = join(UPLOAD_DIR, "lessons");
   await mkdirPrivate(lessonsDir);
   await assertDirectory(lessonsDir, join(root, "lessons"));
-  await mkdirPrivate(lessonDir);
-  await assertDirectory(lessonDir, join(root, "lessons", lessonId.toLowerCase()));
-  return lessonDir;
+  return root;
+}
+
+export async function checkedUploadRoot(): Promise<string> {
+  const root = await assertDirectory(UPLOAD_DIR);
+  await assertDirectory(join(UPLOAD_DIR, "lessons"), join(root, "lessons"));
+  return root;
 }
 
 export async function openNewAttachment(lessonId: string, storedName: string) {

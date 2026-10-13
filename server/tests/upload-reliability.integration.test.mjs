@@ -88,7 +88,8 @@ async function withQueries(intercept, work) {
     if (typeof args[0] === "function") return connected;
     return connected.then(client => new Proxy(client, {
       get(target, property) {
-        if (property === "query") return (...queryArgs) => intercept(String(queryArgs[0]), queryArgs[1], client);
+        if (property === "query") return (...queryArgs) => typeof queryArgs[0] === "string"
+          ? intercept(queryArgs[0], queryArgs[1], client) : client.query(...queryArgs);
         const value = Reflect.get(target, property);
         return typeof value === "function" ? value.bind(target) : value;
       }
@@ -128,8 +129,9 @@ test("INSERT failure removes the published file and rolls back the attachment ro
 
 test("a connection acquisition failure after file validation still cleans the temporary file", async () => {
   const original = pool.connect;
+  let connections = 0;
   pool.connect = function (...args) {
-    if (typeof args[0] === "function") return original.apply(this, args);
+    if (typeof args[0] === "function" || ++connections === 1) return original.apply(this, args);
     return Promise.reject(new Error("SECRET connection failure"));
   };
   let response;

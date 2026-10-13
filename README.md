@@ -983,3 +983,66 @@ DEV-05.1 ограничен файлами, для которых после э�
 локально build/PWA и 129/129 без БД. [CI на fc8a1f7](https://github.com/motostrelok1/dvizh-onboardng-sys/actions/runs/38356686289) —
 372/372 без ошибок/пропусков, migrations/re-run/оба preflight, JUnit
 gate/summary/artifact, сервер/клиент/PWA и Nginx прошли. DEV-05.1 [x].
+
+
+## DEV-05.2: ресурсы загрузки
+
+Обработка upload допускает ограниченное число запросов, включая приём тела,
+проверку формата, SQL/COMMIT и очистку staging. Session advisory slots общие
+для одной БД и canonical realpath UPLOAD_DIR; все backend должны использовать
+тот же root/shared filesystem и одинаковые env. Namespace отделён от jobs,
+падение процесса закрывает PG session и освобождает permit. Advisory session
+выделяет один pool client; максимум env 8 оставляет место при стандартном
+pool=10 для обычных запросов/upload transaction.
+
+| Env | Default | Допустимые значения |
+| --- | --- | --- |
+| UPLOAD_MAX_CONCURRENT | 2 | Integer 1…8 |
+| UPLOAD_MIN_FREE_BYTES | 268435456 (256 МиБ) | Integer 0…9007199254740991 |
+| UPLOAD_TIMEOUT_MS | 120000 | Integer 1000…600000 |
+
+Пустые/отрицательные/fraction/scientific values отказывают при старте, без
+вывода env values. Это технические настройки хранилища, не квоты сотрудников.
+Текущие разрешённые типы и MAX_FILE_SIZE=50 МиБ сохраняются (SPEC §18).
+До открытия .part statfs измеряет bavail*bsize bigint доступного места.
+Требуется floor плюс полный MAX_FILE_SIZE на каждый занятый slot, даже если
+его файл маленький или часть уже записана. Content-Length не уменьшает budget.
+Это консервативная проверка; при близком пороге возможен отказ и повтор позже.
+Перед каждым chunk write и перед публикацией проверяется floor + chunk bytes.
+Другие процессы могут менять диск между измерением/записью: physical reservation
+не выполняется; OS ENOSPC/EDQUOT тоже обрабатываются с очисткой staging.
+
+| HTTP / code | Поведение |
+| --- | --- |
+| 429 upload_busy + Retry-After: 5 | Нет свободного permit; body не staging-ится |
+| 507 storage_full | Запаса места/квоты FS нет; temporary bytes очищаются |
+| 503 upload_unavailable | Не удалось проверить хранилище/PG или gate остановлен |
+| 408 upload_timeout | Deadline/cancel signal отменяет приём и очищает staging |
+
+Deadline сигналит через UPLOAD_TIMEOUT_MS; streaming pipeline и контрольные
+точки format/publication/COMMIT проверяют abort. Уже выполняющийся FS/SQL вызов
+должен завершиться, прежде чем освободится permit; это не принудительный kill
+произвольной DB/FS операции. Guard queries имеют query timeout 5 секунд,
+неопределённый acquire/unlock уничтожает dedicated connection. При SIGTERM/
+SIGINT gate отказывает новым upload, отменяет/дренирует активные и только
+потом закрывается pool. Cleanup/COMMIT ambiguity сохраняет правила H14.
+
+Админка объясняет отказ, снимает busy state и позволяет повторно выбрать файл.
+Auth/admin/Origin/UUID/lesson prechecks выполняются до gate/space probe.
+Paths, свободные bytes, PG errors не попадают в API/logs.
+Для Node admission guard Nginx должен передавать тело потоково: пример содержит
+proxy_request_buffering off вместе с proxy_http_version 1.1. Deployment script
+не устанавливает vhost — применить по DEPLOY.md, nginx -t/reload. На другом
+reverse proxy проверьте его request-body buffering/temp directories отдельно.
+Default Nginx body buffer иначе может заполнить свой temp filesystem до Node.
+
+Новой миграции нет. Обновить все backend/client вместе с этими env и proxy
+настройками; старый backend не участвует в slots. Важен один canonical root;
+другая БД/root не разделяет этот semaphore. Проверять место оператором можно
+через df по UPLOAD_DIR, а занятость — PG locks; автоматические alerting/квоты
+пользователя/курса, согласование старых orphan/.part и uncertain COMMIT не
+объявляются выполненными. На VDS эти env/vhost этим PR не применялись.
+
+Первичные описания: [Node statfs](https://nodejs.org/docs/latest-v24.x/api/fs.html#fspromisesstatfspath-options),
+[PostgreSQL advisory locks](https://www.postgresql.org/docs/16/explicit-locking.html#ADVISORY-LOCKS),
+[Nginx request buffering](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_request_buffering).

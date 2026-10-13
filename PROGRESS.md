@@ -280,7 +280,38 @@ DEV-10.1 и DEV-05.1 выполнены; проверено 372/372 в [CI PR #2
       очищает только удалённые файлы; rollback не трогает диск; crash/ошибка
       сохраняет retry; live references/unsafe paths защищены; build/CI прошли.
 
+- [~] DEV-05.2 — лимиты параллельных загрузок и свободного места
+      Спецификация: docs/SPEC.md §3, §18 (сохраняются текущие типы/50 МиБ);
+      additions.md DEV-05. Куда: server/src/upload-capacity.ts, receiver,
+      storage, admin-attachments, index, server/.env.example, server/tests;
+      client/src/admin/CourseEditor.tsx; deploy/nginx.conf.example/test;
+      README/DEPLOY/PROGRESS/additions и карта тестов.
+      Готово когда: PG slots общие между процессами; до staging проверяется
+      запас, поток прекращается/чистится при low-space/abort; permits не
+      теряются при ошибках/stop; UI объясняет отказ; build/полный CI проходят.
+
 ## Решения и заметки
+### DEV-05.2 — ресурсы загрузки (2026-10-13)
+- Подготовлены PostgreSQL session advisory slots по canonical UPLOAD_DIR,
+  отдельный namespace от jobs. По умолчанию 2 uploads, максимум env 8;
+  permit удерживается через receive/format/SQL/cleanup, не только INSERT.
+- statfs bigint/bavail: admission требует floor + 50 МиБ на каждый занятый
+  slot; default floor 256 МиБ. Проверка перед chunk write и публикацией;
+  ENOSPC/EDQUOT → 507 storage_full, unavailable → private 503. Числа/пути
+  не выдаются клиенту. Logical budget не является физическим резервированием.
+- Deadline signal по умолчанию 120 секунд, abort при разрыве клиента/PG,
+  освобождение или discard неизвестного session lock, stop/drain до pool.end.
+- Admin upload показывает busy/full/timeout/unavailable, блокирует input
+  до завершения. Nginx example отключает request buffering при HTTP/1.1,
+  чтобы guard начал работать до полного тела; native Nginx test проверяет
+  ранний отказ после части объявленного 1 МиБ. Реальный vhost не менялся.
+- Локально build/PWA и 143/143 без БД прошли, включая native HTTP partial
+  cleanup; SQL/API тесты двух независимых gate/connection loss подготовлены.
+  Полный CI ожидается; новой миграции нет. Все backend должны иметь одну
+  БД/root/настройки. Квоты пользователя/курса, alerting, orphan/.part/uncertain
+  COMMIT reconciliation остаются DEV-05; VDS не менялся.
+
+
 ### DEV-05.1 — очередь удаления вложений (2026-10-13)
 - Реализована миграция 1700000017000: AFTER DELETE trigger сохраняет OLD
   attachment/lesson/path в attachment_file_cleanup в той же транзакции,

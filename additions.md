@@ -27,7 +27,7 @@ production-инструкции — DEPLOY.md. Старые описания у�
 | Приоритет | Задача | Что осталось |
 | --- | --- | --- |
 | P1, до внешнего запуска | Эксплуатация | Реальный домен/HTTPS, firewall для 3000/5432, права сервиса/БД, APP_ORIGIN, миграции H15/H17, staging/backup restore, Nginx/journald retention, branch protection |
-| P1 | SEC-05 / DEV-05 | Макросы/сканирование/карантин; квоты/параллельность/место; crash/orphan reconciliation; DEV-05.1 cleanup queue выполнен; old orphan/.part отдельно |
+| P1 | SEC-05 / DEV-05 | Макросы/сканирование/карантин; квоты/alerting; DEV-05.2 concurrency/space в работе; crash/orphan reconciliation; DEV-05.1 cleanup queue выполнен; old orphan/.part отдельно |
 | P1 | Зависимости/секреты | Lockfile/advisory audit, поддерживаемые runtime/framework, git-history secret scanning и политика хранения персональных данных |
 | P1 | Видео/черновики | Выбрать провайдера/защиту URL/CSP; согласовать доступ к draft для назначенного сотрудника |
 | P1–P2 | DEV-10 события | DEV-10.1 выполнен: доступ/лимиты/eventId/ACK/owner очередь; heartbeat, проверенная длительность и browser offline/E2E остаются |
@@ -249,6 +249,15 @@ CI: npm ci → server build → реальные tests → client build. Доп�
 **Статус H19 (2026-10-12):** README/PROGRESS/STAGE12/additions сверены с кодом; DEPLOY.md объединяет first start/update, env/пути, stop/backup/preflight/migrations, systemd/Nginx и rollback. H01–H06 синхронизированы после аудита и CI main 303/303. Локально build/PWA, links/anchors, bash -n для 24 блоков, noEmit/отсутствие generated JS проверены. [CI PR #20 на 584c1ac](https://github.com/motostrelok1/dvizh-onboardng-sys/actions/runs/38249337062): 303/303 без ошибок/пропусков, миграции/повторный запуск/оба preflight, JUnit gate/summary/upload, сервер/клиент/PWA и Nginx прошли. H19 [x]. Новых миграций/runtime-изменений нет; VDS не менялся.
 
 ### DEV-05 — Надёжность загрузок — P1
+
+**DEV-05.2 (2026-10-13) [~]:** session advisory slots по root/DB, default 2,
+statfs admission budget + floor 256 МиБ и chunk guards; cancellation/deadline/
+stop/drain/permit release. UI объясняет 429/507/503/408. Nginx request buffering
+отключён в example и дополнена actual proxy проверка early 429. Новых миграций
+нет, все backend/client/proxy/env обновлять совместно. Полный CI ожидается.
+Локально build/PWA и 143/143 без БД прошли. Пер-user/course quotas, alerting и
+legacy/.part/uncertain COMMIT reconciliation остаются открытыми; VDS не менялся.
+
 
 **DEV-05.1 (2026-10-13) [x]:** transactional AFTER DELETE queue/worker для
 вложения/урока/модуля/курса. Direct DELETE больше не удаляет файл до COMMIT;

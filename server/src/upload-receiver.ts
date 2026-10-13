@@ -1,6 +1,7 @@
 import { Busboy } from "@fastify/busboy";
 import type { IncomingMessage } from "node:http";
 import type { Readable } from "node:stream";
+import { Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { ALLOWED_EXTENSIONS, allowedExtension, openStagedAttachment } from "./storage.js";
 
@@ -14,7 +15,7 @@ export class UploadReceiveError extends Error {
 // Attach listeners synchronously in Busboy's file event. The async req.file()
 // interface can expose a part only AFTER a nextTick error has already fired.
 export async function receiveAttachment(raw: IncomingMessage, lessonId: string,
-  cleanupFailed: () => void = () => {}) {
+  cleanupFailed: () => void = () => {}, control?: { signal: AbortSignal; beforeWrite(bytes: number): Promise<void> }) {
   const contentType = raw.headers["content-type"];
   if (!contentType || !/^multipart\/form-data(?:;|$)/i.test(contentType)) {
     throw new UploadReceiveError(406, { error: "unsupported_media_type" });
@@ -63,16 +64,21 @@ export async function receiveAttachment(raw: IncomingMessage, lessonId: string,
       staged = await openStagedAttachment(lessonId, filename);
       if (failure) throw failure;
       stream.on("data", (chunk: Buffer) => { bytesWritten += chunk.length; });
-      await pipeline(stream, staged.handle.createWriteStream());
+      const guard = new Transform({ transform(chunk: Buffer, _encoding, callback) {
+        Promise.resolve(control?.beforeWrite(chunk.length)).then(()=>callback(null,chunk),callback);
+      } });
+      await pipeline(stream,guard,staged.handle.createWriteStream(),{signal:control?.signal});
       if (stream.truncated) throw new UploadReceiveError(400,
         { error: "file_too_large", maxBytes: MAX_FILE_SIZE });
-    })().catch(fail); // handled immediately, even before parsed settles
+    })().catch(error => fail(control?.signal.aborted ? control.signal.reason : error));
   });
   raw.on("aborted", invalid);
   raw.on("error", invalid);
   raw.on("close", aborted);
+  const cancelled = () => fail(control!.signal.reason);
+  control?.signal.addEventListener("abort",cancelled,{once:true});
   try {
-    raw.pipe(parser);
+    if (control?.signal.aborted) cancelled(); else raw.pipe(parser);
     await parsed;
     await fileTask;
     if (failure) throw failure;
@@ -84,6 +90,7 @@ export async function receiveAttachment(raw: IncomingMessage, lessonId: string,
     raw.removeListener("aborted", invalid);
     raw.removeListener("error", invalid);
     raw.removeListener("close", aborted);
+    control?.signal.removeEventListener("abort",cancelled);
     if (staged && !transferred) await staged.cleanup().catch(cleanupFailed);
   }
 }

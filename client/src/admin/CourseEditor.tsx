@@ -215,6 +215,7 @@ function LessonBlock({
   const [textContent, setTextContent] = useState(lesson.text_content ?? "");
   const [videoProvider, setVideoProvider] = useState(lesson.video_provider ?? "");
   const [videoRef, setVideoRef] = useState(lesson.video_ref ?? "");
+  const [uploading, setUploading] = useState(false);
 
   async function save() {
     await api.patch(`/admin/lessons/${lesson.id}`, {
@@ -227,20 +228,27 @@ function LessonBlock({
   }
 
   async function uploadFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const form = new FormData();
-    form.append("file", file);
-    const res = await fetch(`/api/admin/lessons/${lesson.id}/attachments`, {
-      method: "POST",
-      body: form
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      alert(data.error === "file_type_not_allowed" ? "Этот тип файла не разрешён" : "Ошибка загрузки");
-    }
-    e.target.value = "";
-    onReload();
+    const input = e.currentTarget, file = input.files?.[0];
+    if (!file || uploading) return;
+    setUploading(true);
+    try {
+      const form = new FormData(); form.append("file", file);
+      const res = await fetch(`/api/admin/lessons/${lesson.id}/attachments`, {
+        method: "POST", cache: "no-store", referrerPolicy: "no-referrer", body: form
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        const messages: Record<string, string> = {
+          file_type_not_allowed: "Этот тип файла не разрешён.",
+          storage_full: "Недостаточно свободного места. Сообщите администратору сервера.",
+          upload_busy: "Сейчас загружаются другие файлы. Повторите через несколько секунд.",
+          upload_timeout: "Загрузка заняла слишком много времени. Повторите попытку.",
+          upload_unavailable: "Загрузка временно недоступна. Повторите позже."
+        };
+        alert(messages[data.error] ?? "Ошибка загрузки.");
+      } else { onReload(); }
+    } catch { alert("Не удалось загрузить файл. Проверьте соединение и повторите попытку."); }
+    finally { input.value = ""; setUploading(false); }
   }
 
   async function removeAttachment(id: string) {
@@ -302,7 +310,7 @@ function LessonBlock({
             </li>
           ))}
         </ul>
-        <input type="file" onChange={uploadFile} />
+        <input type="file" onChange={uploadFile} disabled={uploading} />
       </div>
 
       <div style={{ marginTop: 8 }}>

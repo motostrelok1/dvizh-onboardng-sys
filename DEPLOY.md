@@ -272,3 +272,23 @@ queue и transactional AFTER DELETE trigger. Применить по stop/backup
 пару DB/uploads в тех же путях, проверить live rows и pending queue перед start.
 Миграция не удаляет файлы; новый scheduler обрабатывает ранее committed jobs
 сразу после listen. Диагностика без имён/путей — [README](README.md#dev-051-очистка-удалённых-вложений).
+
+
+## Обновление DEV-05.2
+
+PR #23 не добавляет миграций. В server/.env можно задать UPLOAD_MAX_CONCURRENT=2,
+UPLOAD_MIN_FREE_BYTES=268435456 и UPLOAD_TIMEOUT_MS=120000 (default; границы —
+README). Все backend: одна БД, тот же canonical UPLOAD_DIR/shared FS, одинаковые
+значения. Resource guard держит одну dedicated PG session на upload, учитывайте
+pool size при изменении maxConcurrent; default pool=10, предел env 8.
+
+Применить в действующий /api/ location proxy_request_buffering off, сохранив
+proxy_http_version 1.1 и privacy/Origin forwarding. Nginx example обновлён;
+перед reload выполнить nginx -t. Это позволяет отказать upload до полного
+body; иначе временный body buffer прокси находится вне Node guard. Deploy.sh
+сам не обновляет vhost/env. Если есть другой proxy, проверить его buffering.
+
+Обновить backend/client совместно по процедуре выше. Проверьте разрешённый
+upload, busy/low-space ответы на staging и доступное место/inodes средствами
+оператора; реальный диск не заполнять для теста. Никакие VDS настройки этим PR
+не меняются. Существующая миграция DEV-05.1 и её очередь по-прежнему нужны.
