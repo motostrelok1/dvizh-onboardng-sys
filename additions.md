@@ -20,14 +20,14 @@ production-инструкции — DEPLOY.md. Старые описания у�
 | SEC-11/H12/H13 | scoped схемы/DTO/errors, exact Origin, PATCH missing/null | Полные схемы остальных endpoint ещё нужны |
 | DEV-01/02/03/06/09 | attempts, реальные tests/CI, noEmit/no generated JS, PATCH, DB integrity | Browser E2E, dependency audit и file cascade cleanup отдельно |
 | DEV-04 (H19) | README/DEPLOY/статусы обновлены; проверки документации и CI 303/303 прошли | Инструкции проверены по коду; конкретный VDS отдельно |
-| DEV-05/07 | Загрузки и jobs защищены H14/H16 | Полностью не закрыты: остаток ниже |
+| DEV-05/07 | Загрузки/jobs защищены H14/H16, DELETE cleanup — DEV-05.1 | Полностью не закрыты: остаток ниже |
 
 ## Актуальный backlog
 
 | Приоритет | Задача | Что осталось |
 | --- | --- | --- |
 | P1, до внешнего запуска | Эксплуатация | Реальный домен/HTTPS, firewall для 3000/5432, права сервиса/БД, APP_ORIGIN, миграции H15/H17, staging/backup restore, Nginx/journald retention, branch protection |
-| P1 | SEC-05 / DEV-05 | Макросы/сканирование/карантин; квоты/параллельность/место; crash/orphan reconciliation; DEV-05.1 cleanup queue в работе |
+| P1 | SEC-05 / DEV-05 | Макросы/сканирование/карантин; квоты/параллельность/место; crash/orphan reconciliation; DEV-05.1 cleanup queue выполнен; old orphan/.part отдельно |
 | P1 | Зависимости/секреты | Lockfile/advisory audit, поддерживаемые runtime/framework, git-history secret scanning и политика хранения персональных данных |
 | P1 | Видео/черновики | Выбрать провайдера/защиту URL/CSP; согласовать доступ к draft для назначенного сотрудника |
 | P1–P2 | DEV-10 события | DEV-10.1 выполнен: доступ/лимиты/eventId/ACK/owner очередь; heartbeat, проверенная длительность и browser offline/E2E остаются |
@@ -250,11 +250,14 @@ CI: npm ci → server build → реальные tests → client build. Доп�
 
 ### DEV-05 — Надёжность загрузок — P1
 
-**DEV-05.1 (2026-10-13) [~]:** transactional AFTER DELETE queue/worker для
+**DEV-05.1 (2026-10-13) [x]:** transactional AFTER DELETE queue/worker для
 вложения/урока/модуля/курса. Direct DELETE больше не удаляет файл до COMMIT;
 retry после crash/FS/SQL faults, live-path guard, bounded batch, safe paths,
 отдельная runner lane/shared drain. Нужна миграция 1700000017000 и совместное
-обновление backend. Полный CI/результат — PROGRESS/PR #22. Нет автоматической
+обновление backend. Добавлено 29 проверок (8 без БД, 21 PostgreSQL/API);
+локально build/PWA и 129/129 без БД. [CI на fc8a1f7](https://github.com/motostrelok1/dvizh-onboardng-sys/actions/runs/38356686289)
+прошёл: 372/372 без ошибок/пропусков, migrations/re-run/оба preflight,
+gate/artifact/build/PWA/Nginx. Результат — PROGRESS/PR #22; VDS не менялся. Нет автоматической
 сверки старых сирот/.part/uncertain COMMIT; квоты/место/AV остаются открытыми.
 
 

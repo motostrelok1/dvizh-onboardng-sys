@@ -19,8 +19,8 @@
 ## Актуальный статус
 
 Код этапов 0–12 и подэтапы H01–H19 реализованы и проверены в репозитории/CI.
-DEV-10.1 выполнен; проверено 343/343 в [CI PR #21 на f60a3a8](https://github.com/motostrelok1/dvizh-onboardng-sys/actions/runs/38255573253)
-(2026-10-12), без ошибок/пропусков.
+DEV-10.1 и DEV-05.1 выполнены; проверено 372/372 в [CI PR #22 на fc8a1f7](https://github.com/motostrelok1/dvizh-onboardng-sys/actions/runs/38356686289)
+(2026-10-13), без ошибок/пропусков.
 [Чек-лист и CI](HARDENING.md), [незакрытые рекомендации](additions.md#актуальный-backlog).
 Старые записи ниже описывают результат своего этапа; последующие H имеют
 приоритет при описании текущего поведения. VDS/реальная доставка push,
@@ -271,7 +271,7 @@ DEV-10.1 выполнен; проверено 343/343 в [CI PR #21 на f60a3a8
       offline/потерю ответа, очищается при logout/смене пользователя;
       миграция сохраняет старый журнал, сборка и полный CI успешны.
 
-- [~] DEV-05.1 — очистка файлов при удалении вложений/контента
+- [x] DEV-05.1 — очистка файлов при удалении вложений/контента
       Спецификация: docs/SPEC.md §3, §12 (целостность); additions.md DEV-05.
       Куда: server/migrations, src/storage.ts, routes/admin-attachments.ts,
       src/jobs/attachment-cleanup.ts, runner.ts, index.ts, server/tests;
@@ -282,7 +282,7 @@ DEV-10.1 выполнен; проверено 343/343 в [CI PR #21 на f60a3a8
 
 ## Решения и заметки
 ### DEV-05.1 — очередь удаления вложений (2026-10-13)
-- Подготовлена миграция 1700000017000: AFTER DELETE trigger сохраняет OLD
+- Реализована миграция 1700000017000: AFTER DELETE trigger сохраняет OLD
   attachment/lesson/path в attachment_file_cleanup в той же транзакции,
   включая FK cascade; нет FK обратно к удаляемому контенту. До COMMIT
   worker не видит job; down отказывается терять незавершённую очередь.
@@ -297,7 +297,11 @@ DEV-10.1 выполнен; проверено 343/343 в [CI PR #21 на f60a3a8
   SQL diagnostics/границы deployment — README/DEPLOY. Старые сироты без
   DELETE metadata, .part/COMMIT reconciliation, квоты и мониторинг места
   остаются DEV-05; клиент и продуктовые правила не меняются.
-- Целевые filesystem проверки проходят; build/полный CI ожидаются.
+- Добавлено 29 проверок: 8 без БД, 21 PostgreSQL/API на отдельной schema,
+  uploads и advisory namespace. Локально build/PWA и 129/129 без БД прошли.
+  CI на fc8a1f7: 372/372 без ошибок/пропусков, все миграции/re-run/оба
+  preflight, JUnit gate/summary/artifact, сервер/клиент/PWA и Nginx прошли.
+  DEV-05.1 [x], PR #22. Проверенный запуск: https://github.com/motostrelok1/dvizh-onboardng-sys/actions/runs/38356686289
   Перед VDS update нужна миграция/backup/stop всех backend; VDS не менялся.
 
 
