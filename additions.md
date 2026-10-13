@@ -27,7 +27,7 @@ production-инструкции — DEPLOY.md. Старые описания у�
 | Приоритет | Задача | Что осталось |
 | --- | --- | --- |
 | P1, до внешнего запуска | Эксплуатация | Реальный домен/HTTPS, firewall для 3000/5432, права сервиса/БД, APP_ORIGIN, миграции H15/H17, staging/backup restore, Nginx/journald retention, branch protection |
-| P1 | SEC-05 / DEV-05 | Макросы/сканирование/карантин; квоты/параллельность/место; crash/orphan reconciliation; удаление файлов при cascade |
+| P1 | SEC-05 / DEV-05 | Макросы/сканирование/карантин; квоты/параллельность/место; crash/orphan reconciliation; DEV-05.1 cleanup queue в работе |
 | P1 | Зависимости/секреты | Lockfile/advisory audit, поддерживаемые runtime/framework, git-history secret scanning и политика хранения персональных данных |
 | P1 | Видео/черновики | Выбрать провайдера/защиту URL/CSP; согласовать доступ к draft для назначенного сотрудника |
 | P1–P2 | DEV-10 события | DEV-10.1 выполнен: доступ/лимиты/eventId/ACK/owner очередь; heartbeat, проверенная длительность и browser offline/E2E остаются |
@@ -249,6 +249,14 @@ CI: npm ci → server build → реальные tests → client build. Доп�
 **Статус H19 (2026-10-12):** README/PROGRESS/STAGE12/additions сверены с кодом; DEPLOY.md объединяет first start/update, env/пути, stop/backup/preflight/migrations, systemd/Nginx и rollback. H01–H06 синхронизированы после аудита и CI main 303/303. Локально build/PWA, links/anchors, bash -n для 24 блоков, noEmit/отсутствие generated JS проверены. [CI PR #20 на 584c1ac](https://github.com/motostrelok1/dvizh-onboardng-sys/actions/runs/38249337062): 303/303 без ошибок/пропусков, миграции/повторный запуск/оба preflight, JUnit gate/summary/upload, сервер/клиент/PWA и Nginx прошли. H19 [x]. Новых миграций/runtime-изменений нет; VDS не менялся.
 
 ### DEV-05 — Надёжность загрузок — P1
+
+**DEV-05.1 (2026-10-13) [~]:** transactional AFTER DELETE queue/worker для
+вложения/урока/модуля/курса. Direct DELETE больше не удаляет файл до COMMIT;
+retry после crash/FS/SQL faults, live-path guard, bounded batch, safe paths,
+отдельная runner lane/shared drain. Нужна миграция 1700000017000 и совместное
+обновление backend. Полный CI/результат — PROGRESS/PR #22. Нет автоматической
+сверки старых сирот/.part/uncertain COMMIT; квоты/место/AV остаются открытыми.
+
 
 Файл записывается до проверки связи с уроком в БД; при ошибке INSERT или pipeline нет общего cleanup. Это создаёт сиротские/частичные файлы и риск заполнения диска.
 

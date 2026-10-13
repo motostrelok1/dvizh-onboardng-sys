@@ -271,7 +271,36 @@ DEV-10.1 выполнен; проверено 343/343 в [CI PR #21 на f60a3a8
       offline/потерю ответа, очищается при logout/смене пользователя;
       миграция сохраняет старый журнал, сборка и полный CI успешны.
 
+- [~] DEV-05.1 — очистка файлов при удалении вложений/контента
+      Спецификация: docs/SPEC.md §3, §12 (целостность); additions.md DEV-05.
+      Куда: server/migrations, src/storage.ts, routes/admin-attachments.ts,
+      src/jobs/attachment-cleanup.ts, runner.ts, index.ts, server/tests;
+      README/DEPLOY/PROGRESS/additions и карта тестов.
+      Готово когда: DELETE и durable queue атомарны, cascade урока/модуля/курса
+      очищает только удалённые файлы; rollback не трогает диск; crash/ошибка
+      сохраняет retry; live references/unsafe paths защищены; build/CI прошли.
+
 ## Решения и заметки
+### DEV-05.1 — очередь удаления вложений (2026-10-13)
+- Подготовлена миграция 1700000017000: AFTER DELETE trigger сохраняет OLD
+  attachment/lesson/path в attachment_file_cleanup в той же транзакции,
+  включая FK cascade; нет FK обратно к удаляемому контенту. До COMMIT
+  worker не видит job; down отказывается терять незавершённую очередь.
+- Direct DELETE: readonly path precheck, transaction/queue/COMMIT, scoped
+  best-effort unlink; root/corrupt path не приводят к удалению внешнего файла.
+- Worker: новая lane 4 common runner, 50 jobs, immediate startup + 60 секунд
+  после завершения; NOWAIT SHARE fence исключает metadata writers при
+  проверке live paths/unlink. SQL/COMMIT failure сохраняет jobs; ENOENT
+  leaf/lesson идемпотентен только при проверенном root. Файл с live reference
+  откладывается; unsafe/symlink/FS errors сохраняются с backoff 60…3600 секунд.
+- Нет recursive rm, переиспользования UUID-файлов или стирания failed jobs.
+  SQL diagnostics/границы deployment — README/DEPLOY. Старые сироты без
+  DELETE metadata, .part/COMMIT reconciliation, квоты и мониторинг места
+  остаются DEV-05; клиент и продуктовые правила не меняются.
+- Целевые filesystem проверки проходят; build/полный CI ожидаются.
+  Перед VDS update нужна миграция/backup/stop всех backend; VDS не менялся.
+
+
 ### DEV-10.1 — события и очередь (2026-10-12)
 - Реализованы строгие body/UUID/type/payload/time schemas, 100 событий/64 КиБ,
   PostgreSQL лимит 30 запросов/60 секунд на пользователя, 429 Retry-After.

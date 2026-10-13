@@ -11,6 +11,7 @@
 | Вход, приглашения, сессии, роли | auth.integration, auth-recovery.integration, auth-rate-limit.integration | 401/403, отключение, expiry/revocation, атомарность, лимиты, конкуренция |
 | Приватность и API | api-validation, csrf, privacy, health (+ integration) | строгие схемы, safe errors/DTO, Origin, no-store, приватные логи |
 | Файлы | storage, file-content, attachments.integration, upload-staging, upload-receiver, upload-reliability.integration | структура/пути, symlink/коллизии, multipart/обрыв, rollback/COMMIT ambiguity |
+| Удаление файлов | attachment-cleanup (+ integration) | transactional cascade/rollback, durable retry/ENOENT, live paths, unsafe/symlink/missing root, locks/batch/drain/migration |
 | Дедлайны и доступ | deadlines.integration | время БД, completed/overdue, перенос, чужая попытка, job event |
 | Контент/назначения | data-integrity.integration, content-integrity-migration.integration, patch.integration | parent/position locks, constraints/cascade, атомарные assignments, PATCH missing/null |
 | Попытки | test-attempts, test-attempts.integration, attempt-integrity-migration.integration | лимит/resume, принадлежность ID, live grading, frozen finish, гонки, migration up/down |
@@ -22,7 +23,7 @@
 В таблице опущен суффикс `.test.mjs`. Это карта сценариев, не процент покрытия
 всего кода. Не покрыты browser E2E/UI и реальная доставка push устройству.
 Часовые пояса, outbox/retry доставки, heartbeat/server-verified duration (остаток DEV-10), антивирус,
-сверка файлов после аварии и аудит зависимостей остаются отдельными задачами.
+сверка старых orphan/.part после аварии и аудит зависимостей остаются отдельными задачами.
 
 ## Запуск SQL-проверок
 

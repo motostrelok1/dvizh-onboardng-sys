@@ -918,3 +918,62 @@ NULL client_event_id, IDs/payload/time не изменяются. Migration down
 [CI на f60a3a8](https://github.com/motostrelok1/dvizh-onboardng-sys/actions/runs/38255573253) — 343/343 без
 ошибок/пропусков, миграции/re-run/оба preflight, JUnit gate/summary/artifact,
 сервер/клиент/PWA и Nginx прошли. DEV-10.1 отмечен [x] в PROGRESS.md.
+
+
+## DEV-05.1: очистка удалённых вложений
+
+После удаления строки lesson_attachments, в том числе при DELETE урока,
+модуля или курса, AFTER DELETE trigger записывает attachment_id/lesson_id/
+file_path в attachment_file_cleanup. Queue и DELETE фиксируются одной
+транзакцией; rollback сохраняет строку и файл. Worker видит только committed
+jobs. Архивирование курса и удаление пользователя не запускают эту очистку.
+Старые live вложения не мигрируются и не удаляются. Действие trigger на cascade
+и его rollback определены [PostgreSQL](https://www.postgresql.org/docs/16/trigger-definition.html).
+
+Прямой admin DELETE сначала проверяет путь без unlink, затем фиксирует БД и
+делает best-effort cleanup только этого attachment ID. Ответ ok означает,
+что запись удалена и cleanup durable; при занятом worker/ошибке диска файл
+может ждать фонового повтора. Скачивание удалённой записи сразу недоступно.
+Outside/symlink path при direct DELETE даёт прежний отказ без удаления строки;
+если такой путь попал через каскад, он сохраняется в queue как unsafe_path.
+
+Новая lane attachment_cleanup (advisory key 4) общая для процессов/HTTP/job.
+Scheduler запускается после listen, затем через 60 секунд после завершения;
+shutdown ждёт его вместе с остальными jobs. За run обрабатывается до 50 задач.
+Короткий SHARE lock lesson_attachments исключает INSERT/UPDATE/DELETE metadata
+на время проверки ссылок и unlink. NOWAIT отказывается ждать активные записи:
+очередь сохраняется до следующего run. Такой batch на время задерживает новые
+metadata writes; используйте обычный локальный диск, не зависающее сетевое FS.
+
+Worker удаляет только регулярный leaf внутри UPLOAD_DIR/lessons/lesson UUID.
+Root/lessons должны существовать и не быть symlink; missing leaf/lesson после
+этой проверки — идемпотентный успех. Unavailable root не считается ENOENT-успехом.
+Живая ссылка на тот же нормализованный путь защищает файл. Ошибка одного файла
+не мешает другим; category/attempts/next_attempt_at сохраняются без текста
+ошибки. Backoff 60,120,240…3600 секунд, без лимита повторов/стирания evidence.
+SQL/COMMIT failure после unlink оставляет job: повтор с missing file завершится.
+Очередь не имеет FK к deleted content, поэтому каскад её не стирает.
+
+Проверка оператором (без вывода путей/имён):
+
+```sql
+SELECT count(*) AS pending, min(created_at) AS oldest,
+       count(*) FILTER (WHERE next_attempt_at <= clock_timestamp()) AS due
+FROM attachment_file_cleanup;
+SELECT last_error, count(*) AS jobs, max(attempts) AS attempts
+FROM attachment_file_cleanup GROUP BY last_error;
+```
+
+Нужна миграция 1700000017000_attachment_file_cleanup.cjs по DEPLOY.md.
+Все backend должны использовать один и тот же UPLOAD_DIR и те же реальные
+файлы; один pg_dump не восстанавливает их. Restore выполнять при остановленных
+workers с согласованной парой БД/uploads: старый backup queue может удалить
+восстановленные файлы, если записи/директории взяты из другой версии.
+Down блокируется, пока pending queue не пуста. Старый backend не запускает
+новую cleanup job и удаляет файлы до DELETE: смешивать версии нельзя.
+
+DEV-05.1 ограничен файлами, для которых после этой миграции зафиксирован DELETE.
+Старые orphan файлы без строки, .part/COMMIT ambiguity, квоты/свободное место,
+антивирус/карантин и мониторинг остаются отдельными задачами. Каталоги не
+удаляются рекурсивно. Защита предполагает, что uploads меняет только LMS;
+ручные изменения FS/БД и restore выполнять с остановленным сервисом.

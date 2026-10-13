@@ -256,3 +256,19 @@ nullable client_event_id + UNIQUE owner/id, event_rate_limits. Старый жу
 получают 400, а queue v1 без owner/ID не переносится. Down удаляет метаданные
 дедупликации и bucket; откат к старому приёму повторов может удвоить события.
 Подробный протокол/лимиты/границы очереди — [README](README.md#dev-101-события-урока-и-очередь).
+
+
+## Обновление DEV-05.1
+
+PR #22 требует миграцию 1700000017000_attachment_file_cleanup.cjs: durable
+queue и transactional AFTER DELETE trigger. Применить по stop/backup/migrate
+процедуре выше, обновить все backend вместе. Клиент не меняется. Очередь
+содержит абсолютные пути: сохраняйте рабочий UPLOAD_DIR, shared filesystem
+и права удаления; при недоступном root задачи останутся для retry.
+
+Не очищать queue/TRUNCATE вручную и не отключать trigger. Down отказывается
+выполняться с pending jobs. Старые сироты не backfill-ятся автоматически.
+До backup/restore остановить все worker/backend; восстанавливать согласованную
+пару DB/uploads в тех же путях, проверить live rows и pending queue перед start.
+Миграция не удаляет файлы; новый scheduler обрабатывает ранее committed jobs
+сразу после listen. Диагностика без имён/путей — [README](README.md#dev-051-очистка-удалённых-вложений).
