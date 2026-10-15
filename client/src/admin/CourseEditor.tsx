@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import type { PartialBlock } from "@blocknote/core";
-import { BlockLessonEditor } from "../editor/BlockLessonEditor";
+const BlockLessonEditor = lazy(() => import("../editor/BlockLessonEditor").then(m => ({ default: m.BlockLessonEditor })));
 import { api } from "./api";
 import { TestBlock } from "./TestBlock";
 import { CoursePreview } from "./CoursePreview";
@@ -342,10 +342,12 @@ function LessonBlock({
       <div id={`lesson-content-${lesson.id}`} hidden={!expanded}>
       {editorOpened && <>
       <input aria-label="Название урока" value={title} onChange={(e) => setTitle(e.target.value)} style={{ fontWeight: 600, width: "100%", marginTop: 10 }} />
-      <BlockLessonEditor key={lesson.id} lessonId={lesson.id}
-        contentBlocks={lesson.content_blocks ?? null}
-        textContent={lesson.text_content}
-        contentRevision={lesson.content_revision ?? 0} />
+      <Suspense fallback={<p>Загружаем редактор урока…</p>}>
+        <BlockLessonEditor key={lesson.id} lessonId={lesson.id}
+          contentBlocks={lesson.content_blocks ?? null}
+          textContent={lesson.text_content}
+          contentRevision={lesson.content_revision ?? 0} />
+      </Suspense>
 
       <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
         <select value={videoProvider} onChange={(e) => setVideoProvider(e.target.value)}>
