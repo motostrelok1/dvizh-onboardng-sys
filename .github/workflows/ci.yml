@@ -32,6 +32,7 @@ jobs:
       - name: Validate approved deployment shell syntax and guardrails
         run: |
           bash -n deploy/approved-deploy.sh
+          bash -n deploy/blocknote-release.sh
           python3 deploy/test-approved-deploy.py -v
           sudo python3 deploy/test-approved-runtime.py -v
       - name: Build server and client (including PWA)
@@ -112,7 +113,21 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
+          fetch-depth: 0
+      - name: Detect migrations and dependencies requiring manual release
+        id: release_gate
+        env:
+          BEFORE: ${{ github.event.before }}
+          SHA: ${{ github.sha }}
+        run: |
+          if git diff --name-only "$BEFORE" "$SHA" | grep -Eq '^(server/migrations/|package-lock.json$|client/package.json$|server/package.json$|package.json$|deploy/lms.service$|deploy/nginx.conf.example$)'; then
+            echo "manual_required=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Manual production rollout required. Automatic deploy intentionally skipped."
+          else
+            echo "manual_required=false" >> "$GITHUB_OUTPUT"
+          fi
       - name: Set up verified SSH credentials
+        if: steps.release_gate.outputs.manual_required == 'false'
         env:
           KEY: ${{ secrets.LMS_DEPLOY_SSH_KEY }}
           KNOWN_HOSTS: ${{ secrets.LMS_DEPLOY_KNOWN_HOSTS }}
@@ -124,6 +139,7 @@ jobs:
           printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
       - name: Deploy reviewed commit using root-owned VDS script
+        if: steps.release_gate.outputs.manual_required == 'false'
         env:
           HOST: ${{ secrets.LMS_DEPLOY_HOST }}
           USER: ${{ secrets.LMS_DEPLOY_USER }}

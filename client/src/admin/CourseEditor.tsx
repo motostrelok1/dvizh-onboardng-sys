@@ -1,4 +1,6 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
+import type { PartialBlock } from "@blocknote/core";
+const BlockLessonEditor = lazy(() => import("../editor/BlockLessonEditor").then(m => ({ default: m.BlockLessonEditor })));
 import { api } from "./api";
 import { TestBlock } from "./TestBlock";
 import { CoursePreview } from "./CoursePreview";
@@ -11,6 +13,8 @@ type Lesson = {
   title: string;
   position: number;
   text_content: string | null;
+  content_blocks?: PartialBlock[] | null;
+  content_revision?: number;
   video_provider: string | null;
   video_ref: string | null;
   attachments: Attachment[];
@@ -275,16 +279,15 @@ function LessonBlock({
   onReload: () => void;
 }) {
   const [title, setTitle] = useState(lesson.title);
-  const [textContent, setTextContent] = useState(lesson.text_content ?? "");
   const [videoProvider, setVideoProvider] = useState(lesson.video_provider ?? "");
   const [videoRef, setVideoRef] = useState(lesson.video_ref ?? "");
   const [uploading, setUploading] = useState(false);
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(false);
+  const [editorOpened, setEditorOpened] = useState(false);
 
   async function save() {
     await api.patch(`/admin/lessons/${lesson.id}`, {
       title,
-      textContent,
       videoProvider: videoProvider || null,
       videoRef: videoRef || null
     });
@@ -324,7 +327,7 @@ function LessonBlock({
     <div className={`lms-lesson-card ${dragging ? "lms-dragging" : ""}`} onDragOver={(e) => { if (e.dataTransfer.types.includes("application/x-lms-lesson")) e.preventDefault(); }} onDrop={(e) => { if (e.dataTransfer.types.includes("application/x-lms-lesson")) { e.preventDefault(); e.stopPropagation(); onDrop(); } }}>
       <div className="lms-collapse-header">
         <span draggable onDragStart={(e) => { e.dataTransfer.setData("application/x-lms-lesson", lesson.id); e.dataTransfer.effectAllowed = "move"; onDragStart(); }} onDragEnd={onDragEnd} className="lms-drag-handle" title="Перетащить урок" aria-label="Перетащить урок">⠿</span>
-        <button type="button" className="lms-collapse-toggle" aria-expanded={expanded} aria-controls={`lesson-content-${lesson.id}`} onClick={() => setExpanded((v) => !v)}>{expanded ? "▾" : "▸"} {title || "Без названия"}</button>
+        <button type="button" className="lms-collapse-toggle" aria-expanded={expanded} aria-controls={`lesson-content-${lesson.id}`} onClick={() => { setEditorOpened(true); setExpanded((v) => !v); }}>{expanded ? "▾" : "▸"} {title || "Без названия"}</button>
         <div className="lms-editor-actions">
           <button type="button" className="lms-editor-icon" title="Переместить выше" aria-label="Переместить выше" onClick={() => onMove(-1)} disabled={isFirst}>
             ↑
@@ -337,14 +340,14 @@ function LessonBlock({
       </div>
 
       <div id={`lesson-content-${lesson.id}`} hidden={!expanded}>
+      {editorOpened && <>
       <input aria-label="Название урока" value={title} onChange={(e) => setTitle(e.target.value)} style={{ fontWeight: 600, width: "100%", marginTop: 10 }} />
-      <textarea
-        placeholder="Текст урока"
-        value={textContent}
-        onChange={(e) => setTextContent(e.target.value)}
-        rows={3}
-        style={{ width: "100%", marginTop: 6 }}
-      />
+      <Suspense fallback={<p>Загружаем редактор урока…</p>}>
+        <BlockLessonEditor key={lesson.id} lessonId={lesson.id}
+          contentBlocks={lesson.content_blocks ?? null}
+          textContent={lesson.text_content}
+          contentRevision={lesson.content_revision ?? 0} />
+      </Suspense>
 
       <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
         <select value={videoProvider} onChange={(e) => setVideoProvider(e.target.value)}>
@@ -362,7 +365,7 @@ function LessonBlock({
       </div>
 
       <button type="button" className="lms-editor-save" onClick={save} style={{ marginTop: 6 }}>
-        Сохранить урок
+        Сохранить название и видео
       </button>
 
       <div style={{ marginTop: 8 }}>
@@ -383,6 +386,7 @@ function LessonBlock({
       <div style={{ marginTop: 8 }}>
         <TestBlock test={lesson.test} scope="lesson" parentId={lesson.id} onReload={onReload} />
       </div>
+      </>}
       </div>
     </div>
   );

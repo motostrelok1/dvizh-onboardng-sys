@@ -1,9 +1,11 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { api } from "./api";
+import type { PartialBlock } from "@blocknote/core";
+const RichLessonView = lazy(() => import("../editor/RichLessonView").then(m => ({ default: m.RichLessonView })));
 
 type TestRef = { id: string; pass_score: number };
 type Attachment = { id: string; file_name: string; size_bytes: number };
-type Lesson = { id: string; title: string; text_content: string | null; video_provider: string | null; video_ref: string | null; attachments: Attachment[]; test: TestRef | null };
+type Lesson = { id: string; title: string; text_content: string | null; content_blocks?: PartialBlock[] | null; video_provider: string | null; video_ref: string | null; attachments: Attachment[]; test: TestRef | null };
 type Module = { id: string; title: string; test: TestRef | null; lessons: Lesson[] };
 type Tree = { course: { title: string; description: string | null }; modules: Module[] };
 type Answer = { id: string; text: string; is_correct: boolean };
@@ -34,7 +36,7 @@ export function CoursePreview({ courseId, onBack }: { courseId: string; onBack: 
         <h3>Модуль {index + 1}. {module.title}</h3>
         {module.lessons.map((lesson, i) => <article key={lesson.id} className="lms-preview-lesson">
           <h4>Урок {i + 1}. {lesson.title}</h4>
-          {lesson.text_content && <p className="lms-preview-text">{lesson.text_content}</p>}
+          {(lesson.content_blocks?.length || lesson.text_content) && <Suspense fallback={<p>Загружаем оформление урока…</p>}><RichLessonView key={lesson.id} contentBlocks={lesson.content_blocks} textContent={lesson.text_content} /></Suspense>}
           {lesson.video_provider && lesson.video_ref && <PreviewVideo provider={lesson.video_provider} videoRef={lesson.video_ref} />}
           {lesson.attachments.length > 0 && <div><strong>Материалы</strong><ul>{lesson.attachments.map((file) => <li key={file.id}><a href={`/api/admin/attachments/${file.id}/preview`} download>{file.file_name}</a> ({Math.ceil(file.size_bytes / 1024)} КБ)</li>)}</ul></div>}
           {lesson.test && <button className="lms-primary-btn" onClick={() => setActiveTest(lesson.test!.id)}>Пройти демонстрационный тест урока</button>}

@@ -159,6 +159,36 @@ export async function adminAttachmentRoutes(app: FastifyInstance,
     }
   );
 
+  // Inline course images: checked like downloads, but do not count as a
+  // download learning event because browsers fetch images while rendering.
+  app.get<{ Params: { id: string } }>(
+    "/attachments/:id/inline",
+    { preHandler: requireAuth, schema: schema(undefined, idParams()) },
+    async (req, reply) => {
+      const res = await pool.query(
+        "select id, lesson_id, file_path from lesson_attachments where id = $1",
+        [req.params.id]
+      );
+      const row = res.rows[0];
+      if (!row) return reply.code(404).send({ error: "not_found" });
+      const type = attachmentContentType(row.file_path);
+      if (!["image/jpeg", "image/png", "image/webp"].includes(type)) {
+        return reply.code(415).send({ error: "not_inline_image" });
+      }
+      const courseId = await getCourseIdForAttachment(req.params.id);
+      const access = courseId
+        ? await checkCourseAccess(req.currentUser!, courseId)
+        : { ok: false as const, reason: "not_found" as const };
+      if (!access.ok) return reply.code(403).send({ error: access.reason });
+      const handle = await openAttachmentForRead(row.lesson_id, row.file_path);
+      reply.header("Cache-Control", "private, no-store");
+      reply.header("Content-Disposition", "inline");
+      reply.header("X-Content-Type-Options", "nosniff");
+      reply.type(type);
+      return reply.send(handle.createReadStream());
+    }
+  );
+
   // Скачивание — только вошедшему пользователю с доступом к курсу этого урока
   // (админ — всегда; сотрудник — если курс назначен и не просрочен, либо он
   // записан на курс из открытого каталога).
