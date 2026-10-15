@@ -7,6 +7,7 @@ import "@blocknote/mantine/style.css";
 import { api } from "../admin/api";
 import { legacyTextToBlocks } from "./legacy-content";
 import "./blocknote-theme.css";
+import { lessonBlockSchema, calloutChoices } from "./blocknote-schema";
 
 type Props = {
   lessonId: string;
@@ -25,6 +26,7 @@ export function BlockLessonEditor({ lessonId, contentBlocks, textContent, conten
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [status, setStatus] = useState<SaveState>("saved");
   const [emojiOpen, setEmojiOpen] = useState(false);
+  const [calloutOpen, setCalloutOpen] = useState(false);
 
   const uploadFile = useCallback(async (file: File) => {
     if (!["image/jpeg", "image/png"].includes(file.type) || file.size > 10 * 1024 * 1024) {
@@ -44,7 +46,7 @@ export function BlockLessonEditor({ lessonId, contentBlocks, textContent, conten
   }, [lessonId]);
 
   const initialContent = contentBlocks?.length ? contentBlocks : legacyTextToBlocks(textContent);
-  const editor = useCreateBlockNote({ initialContent: initialContent as PartialBlock[], uploadFile }, [lessonId]);
+  const editor = useCreateBlockNote({ schema: lessonBlockSchema, initialContent: initialContent as any, uploadFile }, [lessonId]);
 
   const save = useCallback(async () => {
     if (inFlight.current || savedVersion.current === dirtyVersion.current) return;
@@ -97,6 +99,19 @@ export function BlockLessonEditor({ lessonId, contentBlocks, textContent, conten
     <div className="lms-rich-editor-toolbar">
       <strong>Содержимое урока</strong>
       <div className="lms-rich-editor-tools">
+        <div className="lms-emoji-picker">
+          <button type="button" aria-expanded={calloutOpen} onClick={() => setCalloutOpen(v => !v)}>💡 Учебный блок</button>
+          {calloutOpen && <div className="lms-callout-options" role="group" aria-label="Тип учебного блока">
+            {calloutChoices.map(choice => <button type="button" key={choice.variant}
+              onClick={() => {
+                editor.insertBlocks([{ type: "callout", props: { variant: choice.variant }, content: [] }],
+                  editor.getTextCursorPosition().block, "after");
+                setCalloutOpen(false); editor.focus();
+              }}>
+              {choice.icon} {choice.label}
+            </button>)}
+          </div>}
+        </div>
         <div className="lms-emoji-picker">
           <button type="button" aria-expanded={emojiOpen} onClick={() => setEmojiOpen(v => !v)}>😀 Эмодзи</button>
           {emojiOpen && <div className="lms-emoji-options" role="group" aria-label="Эмодзи">
