@@ -11,7 +11,8 @@ permissions:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Never interrupt a production rollout because another commit was pushed.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build:
@@ -95,3 +96,39 @@ jobs:
           path: server/test-results.xml
           if-no-files-found: error
           retention-days: 7
+
+  production_deploy:
+    name: Deploy to production after green CI
+    needs: [build, integration]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    environment: production
+    timeout-minutes: 25
+    concurrency:
+      group: lms-production-deployment
+      cancel-in-progress: false
+    steps:
+      - name: Checkout exactly the tested commit
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Set up verified SSH credentials
+        env:
+          KEY: ${{ secrets.LMS_DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.LMS_DEPLOY_KNOWN_HOSTS }}
+        run: |
+          test -n "$KEY" && test -n "$KNOWN_HOSTS"
+          mkdir -p -m 700 ~/.ssh
+          printf '%s\n' "$KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+      - name: Deploy reviewed commit using root-owned VDS script
+        env:
+          HOST: ${{ secrets.LMS_DEPLOY_HOST }}
+          USER: ${{ secrets.LMS_DEPLOY_USER }}
+          SHA: ${{ github.sha }}
+        run: |
+          test -n "$HOST" && test -n "$USER"
+          test "$USER" = "lms-deploy"
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=15 "$USER@$HOST" "sudo -n /usr/local/sbin/lms-approved-deploy '$SHA'"
