@@ -5,6 +5,25 @@
 `/var/www/lms/client-dist` и `edu.example.ru` ниже — примеры, которые нужно
 заменить своими. CI проверяет код и одноразовую БД, deployment не выполняет.
 
+## Фактическая установка lms.dvizh-school.ru (2026-10-15)
+
+Этот раздел фиксирует подтверждённое оператором состояние, **не** является универсальным скриптом обновления:
+
+- VDS Ubuntu 24.04; `/opt/lms`, `/opt/node24/bin/node` (Node 24.22.0), системный `/usr/bin/node` остался Node 22.
+- PostgreSQL 16 локально `127.0.0.1:5432`, DB/role `lms`, миграции 1700000001000…1700000017000 применены.
+- Backend `lms.service` на `127.0.0.1:3001` (unit запускает `/opt/node24/bin/node /opt/lms/server/dist/index.js`); конфигурация в `/opt/lms/server/.env`; права на uploads/logs 0700, env 0600.
+- Frontend `/var/www/lms/client-dist`, Nginx vhost `lms.dvizh-school.ru`, прокси `/api/` на `127.0.0.1:3001`. HTTPS / и /api/health отвечали 200; вход в админку подтверждён.
+- Сборка выполнялась от root с umask 077: после `npm ci` требуются разрешения чтения пакетов пользователем `lms`, после server build — права на `server/dist`. Не применять `chmod -R 777`. В перспективе перейти на предсказуемый deploy user/группу.
+- Последняя **известная установленная** база кода до PR #23/#24 — `bd801ad` + ручная правка bind на 127.0.0.1. Новый `main` после merge PR #23/#24 — `2635dbb`; на VDS пока нет подтверждённого обновления.
+
+### Следующее обслуживание (вручную, по шагам)
+
+1. Сначала проверить `git status --short`, `git log -1 --oneline`, `systemctl status lms`, nginx -t и реальные пути/env; учесть **локальное изменение tracked server/src/index.ts**. Не запускать `deploy/deploy.sh`: он делает `git reset --hard`, по умолчанию curl port 3000 и не сохраняет backup.
+2. Остановить LMS для согласованной пары данных, снять dump PostgreSQL + архив фактического UPLOAD_DIR с одним timestamp; проверить файлы и восстановление в изолированной БД/каталоге до изменения production. Не выводить DATABASE_URL в логи.
+3. Подготовить полную конфигурацию защищённого vhost из `deploy/nginx.conf.example` (актуальный порт **3001**, web root указан выше), отдельно учесть `proxy_request_buffering off` из DEV-05.2, маскирование URI приглашений, no-store, no-referrer, private logs. Проверить `nginx -t` перед reload; не менять другие vhost.
+4. Обновлять код только после проверки PR CI и согласования локальной правки с upstream, `npm ci` под Node 24, build, restore permissions, preflight/migrate по `DEPLOY.md`; обновить backend/client совместно, проверить `127.0.0.1:3001/health`, `/health/db` и HTTPS.
+5. Отдельно: аудит npm-зависимостей, certbot renewal/redirect, реальные push и browser E2E, автокопии/restore, наблюдаемость.
+
 ## Подготовка сервера
 
 Нужны Node.js 24 для терминала **и** `/usr/bin/node` из lms.service,
