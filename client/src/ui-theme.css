@@ -1,0 +1,152 @@
+/* DVIZH LMS shared control system. Imported from App, so admin, staff, login and invitations use it. */
+:root {
+  --ui-primary: #2768ca;
+  --ui-primary-hover: #1854aa;
+  --ui-ink: #203b60;
+  --ui-muted: #627792;
+  --ui-line: #d6e1ef;
+  --ui-focus: #8bb9ff;
+  --ui-danger: #ac3446;
+  --ui-radius: 10px;
+}
+button,
+input,
+textarea,
+select { font-family: inherit; }
+button {
+  appearance: none;
+  border: 1px solid var(--ui-line);
+  border-radius: var(--ui-radius);
+  padding: 9px 14px;
+  min-height: 38px;
+  background: #fff;
+  color: var(--ui-ink);
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.35;
+  cursor: pointer;
+  transition: background-color .16s ease, border-color .16s ease, box-shadow .16s ease;
+}
+button:hover:not(:disabled) { background: #edf4ff; border-color: #a6c6ef; }
+button:disabled { opacity: .5; cursor: not-allowed; }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 3px solid var(--ui-focus); outline-offset: 2px;
+}
+input:not([type=checkbox]):not([type=radio]):not([type=file]),
+select, textarea {
+  border: 1px solid var(--ui-line);
+  border-radius: 9px;
+  padding: 10px 12px;
+  background: #fff;
+  color: var(--ui-ink);
+  font-size: 13px;
+  max-width: 100%;
+}
+textarea { line-height: 1.55; resize: vertical; }
+input[type=checkbox], input[type=radio] { accent-color: var(--ui-primary); }
+input[type=file] { color: var(--ui-muted); font-size: 13px; max-width: 100%; }
+input[type=file]::file-selector-button {
+  border: 1px solid var(--ui-line); background: #f6f9ff; color: #245ba7;
+  border-radius: 9px; padding: 9px 12px; font: inherit; font-weight: 650;
+  margin-right: 12px; cursor: pointer;
+}
+input[type=file]::file-selector-button:hover { background: #e9f2ff; }
+
+/* Admin: all content-area actions, including legacy buttons with no class. */
+.lms-admin .lms-content button:not(.lms-collapse-toggle):not(.lms-course-title) {
+  appearance: none;
+  border: 1px solid #cdddf1;
+  background: #fff;
+  color: #25558e;
+  border-radius: 9px;
+  min-height: 38px;
+  padding: 9px 13px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.3;
+  box-shadow: 0 1px 2px rgba(19, 55, 105, .04);
+}
+.lms-admin .lms-content button:not(.lms-collapse-toggle):not(.lms-course-title):hover:not(:disabled) {
+  background: #edf4ff;
+  border-color: #9ebfec;
+}
+.lms-admin .lms-content :is(.lms-primary-btn,.lms-editor-save,button[type=submit]):not(.lms-collapse-toggle) {
+  background: var(--ui-primary);
+  border-color: var(--ui-primary);
+  color: #fff;
+}
+.lms-admin .lms-content :is(.lms-primary-btn,.lms-editor-save,button[type=submit]):hover:not(:disabled) {
+  background: var(--ui-primary-hover);
+  border-color: var(--ui-primary-hover);
+  color: #fff;
+}
+.lms-admin .lms-content :is(.lms-delete-btn,.lms-editor-delete) {
+  background: #fff5f6;
+  border-color: #f1c6cd;
+  color: var(--ui-danger);
+}
+.lms-admin .lms-content :is(.lms-delete-btn,.lms-editor-delete):hover:not(:disabled) {
+  background: #ffe9ed;
+  border-color: #e6a4b0;
+  color: #962b3c;
+}
+.lms-admin .lms-content .lms-editor-icon {
+  min-width: 36px; width: 36px; min-height: 36px;
+  padding: 6px; display: inline-grid; place-items: center;
+}
+.lms-admin .lms-content .lms-collapse-toggle {
+  background: transparent; border: 0; box-shadow: none;
+  color: #214a80; font-weight: 750; min-height: 36px;
+}
+.lms-admin .lms-content .lms-collapse-toggle:hover { color: #1859b1; }
+.lms-admin .lms-content .lms-course-title {
+  border: 0; background: transparent; box-shadow: none; padding: 0;
+  min-height: auto; color: #245fae; font-weight: 700;
+}
+.lms-admin .lms-content .lms-course-title:hover { text-decoration: underline; }
+.lms-admin .lms-content .lms-editor-actions { display:flex; align-items:center; flex-wrap:wrap; gap:7px; }
+.lms-admin .lms-content :is(.lms-lesson-card,.lms-module-card) { min-width:0; }
+.lms-admin .lms-content input:not([type=checkbox]):not([type=radio]):not([type=file]),
+.lms-admin .lms-content textarea,
+.lms-admin .lms-content select {
+  border: 1px solid var(--ui-line);
+  border-radius: 9px;
+  background: #fff;
+  color: var(--ui-ink);
+  font: inherit;
+  font-size: 13px;
+}
+.lms-admin .lms-content .lms-test-editor {
+  border:1px solid #d9e5f5; background:#f4f8fd; border-radius:12px; padding:16px;
+}
+.lms-admin .lms-content .lms-question-editor {
+  border:1px solid #dce5f1; background:#fff; border-radius:10px; padding:13px;
+}
+.lms-admin .lms-content .lms-panel {
+  border-radius: 15px; border-color: #e1e9f3;
+}
+.lms-admin .lms-content .lms-course-settings select { min-height: 40px; }
+.lms-admin .lms-content .lms-add-row,
+.lms-admin .lms-content .lms-lesson-add,
+.lms-admin .lms-content .lms-test-add { flex-wrap:wrap; align-items:center; }
+.lms-admin .lms-content .lms-test-add input:not([type=checkbox]) { min-width: 160px; flex:1; }
+.lms-admin .lms-content button:disabled { opacity: .48; }
+
+/* Keep navigation and the header from inheriting content button styles. */
+.lms-sidebar .lms-nav button { border: 0; box-shadow:none; min-height: 42px; font-weight: 500; }
+.lms-sidebar .lms-nav button[aria-current=page] { font-weight: 750; background: #2768ca; color:#fff; }
+.lms-logout { background: #fff; border: 1px solid var(--ui-line); }
+
+/* All employee and onboarding flows inherit the common button/form controls.
+   Keep clickable test badges and cards responsive on phones. */
+@media(max-width:760px) {
+  .lms-admin .lms-content .lms-editor-actions { width:100%; justify-content:flex-end; }
+  .lms-admin .lms-content :is(.lms-lesson-card,.lms-module-card) { padding:12px; }
+  .lms-admin .lms-content input:not([type=checkbox]):not([type=radio]):not([type=file]) { min-width:0; }
+  .lms-admin .lms-content :is(.lms-test-editor,.lms-question-editor) { padding:11px; }
+  button { min-height: 40px; }
+}
+@media(prefers-reduced-motion:reduce) {
+  button { transition:none; }
+}
