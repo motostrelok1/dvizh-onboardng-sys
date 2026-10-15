@@ -723,3 +723,19 @@ DEV-10.1, DEV-05.1 и DEV-05.2 выполнены; проверено 399/399 в
 - [ ] BN-05: загрузка фотографий, эмодзи и безопасное media-хранилище.
 - [ ] BN-06: учебные блоки, авто-сохранение, мобильная доступность.
 - [ ] BN-07: E2E и приёмка. Подробнее: [docs/BLOCKNOTE-SPEC.md](docs/BLOCKNOTE-SPEC.md).
+
+
+## BN: состояние ветки реализации (не production)
+
+В `feature/blocknote-complete-editor` реализованы базовая версия BlockNote
+0.55/Mantine 8 с закреплённым lockfile; JSONB/API и optimistic revisions;
+русский язык, эмодзи, изображения PNG/JPEG, таблицы, пять учебных блоков,
+автосохранение, read-only preview/employee и проверка прав на inline media.
+Комплексные CI unit/API/PostgreSQL/build проверки выполняются в PR #47.
+
+**Не помечать выпуск завершённым:** PR #47 пока draft, продовая миграция
+`1700000018000` не применена, поэтому новая панель на
+https://lms.dvizh-school.ru ещё недоступна. Первый rollout описан в
+[docs/BLOCKNOTE-ROLLOUT.md](docs/BLOCKNOTE-ROLLOUT.md). Пользовательские
+desktop/mobile/PWA проверки BN-07 — **после** завершения внедрения, по решению
+владельца. Миграцию нельзя проводить через стандартный auto-deploy.
