@@ -282,7 +282,8 @@ function LessonBlock({
   const [videoProvider, setVideoProvider] = useState(lesson.video_provider ?? "");
   const [videoRef, setVideoRef] = useState(lesson.video_ref ?? "");
   const [uploading, setUploading] = useState(false);
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(false);
+  const [editorOpened, setEditorOpened] = useState(false);
 
   async function save() {
     await api.patch(`/admin/lessons/${lesson.id}`, {
@@ -326,7 +327,7 @@ function LessonBlock({
     <div className={`lms-lesson-card ${dragging ? "lms-dragging" : ""}`} onDragOver={(e) => { if (e.dataTransfer.types.includes("application/x-lms-lesson")) e.preventDefault(); }} onDrop={(e) => { if (e.dataTransfer.types.includes("application/x-lms-lesson")) { e.preventDefault(); e.stopPropagation(); onDrop(); } }}>
       <div className="lms-collapse-header">
         <span draggable onDragStart={(e) => { e.dataTransfer.setData("application/x-lms-lesson", lesson.id); e.dataTransfer.effectAllowed = "move"; onDragStart(); }} onDragEnd={onDragEnd} className="lms-drag-handle" title="Перетащить урок" aria-label="Перетащить урок">⠿</span>
-        <button type="button" className="lms-collapse-toggle" aria-expanded={expanded} aria-controls={`lesson-content-${lesson.id}`} onClick={() => setExpanded((v) => !v)}>{expanded ? "▾" : "▸"} {title || "Без названия"}</button>
+        <button type="button" className="lms-collapse-toggle" aria-expanded={expanded} aria-controls={`lesson-content-${lesson.id}`} onClick={() => { setEditorOpened(true); setExpanded((v) => !v); }}>{expanded ? "▾" : "▸"} {title || "Без названия"}</button>
         <div className="lms-editor-actions">
           <button type="button" className="lms-editor-icon" title="Переместить выше" aria-label="Переместить выше" onClick={() => onMove(-1)} disabled={isFirst}>
             ↑
@@ -339,6 +340,7 @@ function LessonBlock({
       </div>
 
       <div id={`lesson-content-${lesson.id}`} hidden={!expanded}>
+      {editorOpened && <>
       <input aria-label="Название урока" value={title} onChange={(e) => setTitle(e.target.value)} style={{ fontWeight: 600, width: "100%", marginTop: 10 }} />
       <BlockLessonEditor key={lesson.id} lessonId={lesson.id}
         contentBlocks={lesson.content_blocks ?? null}
@@ -382,6 +384,7 @@ function LessonBlock({
       <div style={{ marginTop: 8 }}>
         <TestBlock test={lesson.test} scope="lesson" parentId={lesson.id} onReload={onReload} />
       </div>
+      </>}
       </div>
     </div>
   );
