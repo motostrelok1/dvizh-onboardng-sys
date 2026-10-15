@@ -16,8 +16,9 @@ cd "$APP"
 git fetch origin main
 [[ "$(git rev-parse origin/main)" == "$TARGET" ]] || { echo "Target is not latest origin/main" >&2; exit 1; }
 git merge-base --is-ancestor HEAD "$TARGET" || { echo "Non-fast-forward" >&2; exit 1; }
+[[ ! -e "$BACKUPS/RECONCILE-BEFORE-NEXT-DEPLOY" ]] || { echo "Previous rollback needs manual reconciliation" >&2; exit 1; }
 FROM="$(git rev-parse HEAD)"
-if [[ "$FROM" == "$TARGET" ]]; then echo "Already at target"; exit 0; fi
+if [[ "$FROM" == "$TARGET" ]]; then echo "Already at target (verify deployed artifacts manually)"; exit 0; fi
 while IFS= read -r file; do
   case "$file" in
     server/migrations/*|package.json|package-lock.json|server/package.json|client/package.json|deploy/lms.service|deploy/nginx.conf.example)
@@ -49,7 +50,10 @@ rollback() {
       rsync -a --delete --chmod=D755,F644 "$BACKUP/frontend/" "$WEB/" || true
     fi
     systemctl start lms || true
-    echo "NOTICE: checkout may be at new commit; reconcile git state before next deploy" >&2
+    if [[ "$(git rev-parse HEAD)" != "$FROM" ]]; then
+      echo "$FROM" > "$BACKUPS/RECONCILE-BEFORE-NEXT-DEPLOY"
+      echo "WARNING: old builds restored but git HEAD advanced. Manual reconciliation required." >&2
+    fi
   fi
   exit "$rc"
 }
@@ -77,10 +81,15 @@ test -s "$APP/server/dist/index.js"
 rsync -a --delete --chmod=D755,F644 "$APP/client/dist/" "$WEB/"
 published=1
 systemctl start lms
+for i in $(seq 1 10); do
+  if curl --fail --silent --show-error --max-time 3 http://127.0.0.1:3001/health >/dev/null 2>&1; then break; fi
+  sleep 2
+done
 curl --fail --silent --show-error --max-time 20 http://127.0.0.1:3001/health >/dev/null
 curl --fail --silent --show-error --max-time 20 http://127.0.0.1:3001/health/db >/dev/null
 curl --fail --silent --show-error --max-time 20 https://lms.dvizh-school.ru/api/health >/dev/null
-curl --fail --silent --show-error --max-time 20 https://lms.dvizh-school.ru/index.html | grep -q '<div id="root">'
+curl --fail --silent --show-error --max-time 20 https://lms.dvizh-school.ru/index.html > "$BACKUP/post-deploy-index.html"
+grep -q '<div id="root">' "$BACKUP/post-deploy-index.html"
 stopped=0
 trap - ERR
 echo "Deployed $(git rev-parse --short HEAD). Backup: $BACKUP"
