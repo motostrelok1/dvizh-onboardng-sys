@@ -29,9 +29,9 @@ export default function AdminApp() {
   if (user.role !== "admin") return <p style={{ padding: 24 }}>Доступ только для администратора.</p>;
 
   const navItems = [
-    ["dashboard", "Дашборд"], ["courses", "Курсы"], ["assignments", "Назначения"],
-    ["reports", "Отчёты"], ["settings", "Настройки"], ["employees", "Сотрудники"],
-    ["departments", "Отделы"], ["groups", "Группы"]
+    ["dashboard", "Дашборд", "▦"], ["courses", "Курсы", "▤"], ["assignments", "Назначения", "◫"],
+    ["reports", "Отчёты", "▥"], ["settings", "Настройки", "⚙"], ["employees", "Сотрудники", "♙"],
+    ["departments", "Отделы", "▧"], ["groups", "Группы", "♧"]
   ] as const;
   const currentLabel = navItems.find(([key]) => key === tab)?.[1] ?? "Дашборд";
 
@@ -40,8 +40,8 @@ export default function AdminApp() {
       <aside className="lms-sidebar" aria-label="Навигация администратора">
         <div className="lms-brand"><div className="lms-brand-mark" aria-hidden="true">D</div><div>ДВИЖ<small>LEARNING SYSTEM</small></div></div>
         <nav className="lms-nav" aria-label="Разделы LMS">
-          {navItems.map(([key, label]) => (
-            <button key={key} type="button" aria-current={tab === key ? "page" : undefined} onClick={() => setTab(key)}>{label}</button>
+          {navItems.map(([key, label, glyph]) => (
+            <button key={key} type="button" aria-current={tab === key ? "page" : undefined} onClick={() => setTab(key)}><span className="lms-nav-icon" aria-hidden="true">{glyph}</span><span>{label}</span></button>
           ))}
         </nav>
         <div className="lms-side-bottom">ДВИЖ LMS · Панель администратора</div>
@@ -52,7 +52,7 @@ export default function AdminApp() {
           <div className="lms-user-controls"><span>{"Администратор"}</span><button className="lms-logout" onClick={() => api.post("/auth/logout").then(() => setUser(null))}>Выйти</button></div>
         </header>
         <div className="lms-content">
-          {tab === "dashboard" && <DashboardTab />}
+          {tab === "dashboard" && <DashboardTab onAddEmployee={() => setTab("employees")} />}
           {tab === "courses" && <CoursesTab />}
           {tab === "assignments" && <AssignmentsTab />}
           {tab === "reports" && <ReportsTab />}
