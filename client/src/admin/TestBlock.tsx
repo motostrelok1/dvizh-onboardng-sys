@@ -61,7 +61,7 @@ export function TestBlock({
   }
 
   return (
-    <div style={{ background: "#eef", border: "1px solid #ccd", borderRadius: 6, padding: 10, marginTop: 6 }}>
+    <div className="lms-test-editor">
       <TestSettings test={test} onSaved={openTest} />
       {detail && (
         <QuestionsEditor testId={test.id} questions={detail.questions} onReload={openTest} />
@@ -70,7 +70,7 @@ export function TestBlock({
         <button onClick={() => setOpen(false)} style={{ fontSize: 12 }}>
           свернуть
         </button>{" "}
-        <button onClick={removeTest} style={{ fontSize: 12 }}>
+        <button className="lms-editor-delete" onClick={removeTest} style={{ fontSize: 12 }}>
           удалить тест
         </button>
       </div>
@@ -155,7 +155,7 @@ function QuestionsEditor({
         <QuestionBlock key={q.id} index={i + 1} question={q} onReload={onReload} onRemove={() => removeQuestion(q.id)} />
       ))}
 
-      <form onSubmit={addQuestion} style={{ display: "flex", gap: 8, marginTop: 8, alignItems: "center" }}>
+      <form className="lms-test-add" onSubmit={addQuestion} style={{ display: "flex", gap: 8, marginTop: 8, alignItems: "center" }}>
         <input
           placeholder="Текст вопроса"
           value={newQuestion}
@@ -205,12 +205,12 @@ function QuestionBlock({
   }
 
   return (
-    <div style={{ background: "#fff", border: "1px solid #ddd", borderRadius: 6, padding: 8, marginBottom: 6 }}>
+    <div className="lms-question-editor">
       <div style={{ display: "flex", justifyContent: "space-between" }}>
         <strong style={{ fontSize: 13 }}>
           {index}. {question.text} {question.multiple && "(неск. верных)"}
         </strong>
-        <button onClick={onRemove} style={{ fontSize: 11 }}>
+        <button className="lms-editor-delete" onClick={onRemove} style={{ fontSize: 11 }}>
           удалить вопрос
         </button>
       </div>
@@ -220,13 +220,13 @@ function QuestionBlock({
             <label>
               <input type="checkbox" checked={a.is_correct} onChange={() => toggleCorrect(a)} /> {a.text}
             </label>{" "}
-            <button onClick={() => removeAnswer(a.id)} style={{ fontSize: 11 }}>
+            <button className="lms-editor-delete" onClick={() => removeAnswer(a.id)} style={{ fontSize: 11 }}>
               удалить
             </button>
           </li>
         ))}
       </ul>
-      <form onSubmit={addAnswer} style={{ display: "flex", gap: 6, alignItems: "center" }}>
+      <form className="lms-test-add" onSubmit={addAnswer} style={{ display: "flex", gap: 6, alignItems: "center" }}>
         <input
           placeholder="Вариант ответа"
           value={newAnswer}
