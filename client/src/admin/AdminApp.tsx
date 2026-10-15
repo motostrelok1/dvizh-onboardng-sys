@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import "./admin-dashboard.css";
 import { api } from "./api";
 import { EmployeesTab } from "./EmployeesTab";
 import { DepartmentsTab } from "./DepartmentsTab";
@@ -27,44 +28,40 @@ export default function AdminApp() {
   if (user === null) return <LoginForm onLogin={setUser} />;
   if (user.role !== "admin") return <p style={{ padding: 24 }}>Доступ только для администратора.</p>;
 
+  const navItems = [
+    ["dashboard", "Дашборд"], ["courses", "Курсы"], ["assignments", "Назначения"],
+    ["reports", "Отчёты"], ["settings", "Настройки"], ["employees", "Сотрудники"],
+    ["departments", "Отделы"], ["groups", "Группы"]
+  ] as const;
+  const currentLabel = navItems.find(([key]) => key === tab)?.[1] ?? "Дашборд";
+
   return (
-    <div style={{ fontFamily: "system-ui", maxWidth: 900, margin: "0 auto", padding: 24 }}>
-      <header style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}>
-        <h1>Админка</h1>
-        <button onClick={() => api.post("/auth/logout").then(() => setUser(null))}>Выйти</button>
-      </header>
-
-      <nav style={{ display: "flex", gap: 8, marginBottom: 20 }}>
-        {(
-          [
-            ["dashboard", "Дашборд"],
-            ["courses", "Курсы"],
-            ["assignments", "Назначения"],
-            ["reports", "Отчёты"],
-            ["settings", "Настройки"],
-            ["employees", "Сотрудники"],
-            ["departments", "Отделы"],
-            ["groups", "Группы"]
-          ] as const
-        ).map(([key, label]) => (
-          <button
-            key={key}
-            onClick={() => setTab(key)}
-            style={{ fontWeight: tab === key ? 700 : 400 }}
-          >
-            {label}
-          </button>
-        ))}
-      </nav>
-
-      {tab === "dashboard" && <DashboardTab />}
-      {tab === "courses" && <CoursesTab />}
-      {tab === "assignments" && <AssignmentsTab />}
-      {tab === "reports" && <ReportsTab />}
-      {tab === "settings" && <SettingsTab />}
-      {tab === "employees" && <EmployeesTab />}
-      {tab === "departments" && <DepartmentsTab />}
-      {tab === "groups" && <GroupsTab />}
+    <div className="lms-admin">
+      <aside className="lms-sidebar" aria-label="Навигация администратора">
+        <div className="lms-brand"><div className="lms-brand-mark" aria-hidden="true">D</div><div>ДВИЖ<small>LEARNING SYSTEM</small></div></div>
+        <nav className="lms-nav" aria-label="Разделы LMS">
+          {navItems.map(([key, label]) => (
+            <button key={key} type="button" aria-current={tab === key ? "page" : undefined} onClick={() => setTab(key)}>{label}</button>
+          ))}
+        </nav>
+        <div className="lms-side-bottom">ДВИЖ LMS · Панель администратора</div>
+      </aside>
+      <main className="lms-main">
+        <header className="lms-topbar">
+          <div><div className="lms-overline">Управление обучением</div><h1 className="lms-page-title">{currentLabel}</h1></div>
+          <div className="lms-user-controls"><span>{"Администратор"}</span><button className="lms-logout" onClick={() => api.post("/auth/logout").then(() => setUser(null))}>Выйти</button></div>
+        </header>
+        <div className="lms-content">
+          {tab === "dashboard" && <DashboardTab />}
+          {tab === "courses" && <CoursesTab />}
+          {tab === "assignments" && <AssignmentsTab />}
+          {tab === "reports" && <ReportsTab />}
+          {tab === "settings" && <SettingsTab />}
+          {tab === "employees" && <EmployeesTab />}
+          {tab === "departments" && <DepartmentsTab />}
+          {tab === "groups" && <GroupsTab />}
+        </div>
+      </main>
     </div>
   );
 }
