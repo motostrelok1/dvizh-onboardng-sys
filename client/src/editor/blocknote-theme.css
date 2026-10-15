@@ -1,0 +1,20 @@
+/* BlockNote editor and read-only article harmonized with DVIZH LMS */
+.lms-rich-editor,.lms-rich-preview { background:#fff; border:1px solid #dce6f3; border-radius:12px; margin:12px 0; overflow:visible; color:#21344f; }
+.lms-rich-editor { padding:12px 14px; }
+.lms-rich-editor-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;border-bottom:1px solid #e4ebf6;padding-bottom:10px}
+.lms-rich-editor-toolbar strong{font-size:13px;color:#233f64}
+.lms-rich-editor-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.lms-rich-status{font-size:12px;color:#53738c}
+.lms-rich-status-error,.lms-rich-status-conflict{color:#b63e4d}
+.lms-rich-hint{font-size:12px;color:#6d8099;margin:9px 0 14px}
+.lms-rich-editor .bn-editor,.lms-rich-preview .bn-editor{padding:16px 14px;min-height:100px;font-family:inherit;font-size:15px;line-height:1.65;color:#253855}
+.lms-rich-preview{border:0;padding:0;max-width:100%}
+.lms-rich-preview .bn-editor{padding:0}
+.lms-rich-editor .bn-block-content[data-content-type=heading],.lms-rich-preview .bn-block-content[data-content-type=heading]{color:#173d76}
+.lms-rich-editor .bn-root,.lms-rich-preview .bn-root{--bn-colors-editor-background:#fff;max-width:100%}
+.lms-rich-editor img,.lms-rich-preview img{max-width:100%;height:auto;border-radius:10px}
+.lms-emoji-picker{position:relative}
+.lms-emoji-options{position:absolute;z-index:30;top:calc(100% + 5px);right:0;width:220px;padding:8px;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px;border:1px solid #dce6f3;background:#fff;border-radius:12px;box-shadow:0 12px 25px rgba(20,44,85,.15)}
+.lms-emoji-options button{padding:4px;min-height:32px;font-size:20px;border:0!important;background:transparent!important;box-shadow:none!important}
+.lms-course-editor .lms-rich-editor button{font-size:13px}
+@media(max-width:600px){.lms-rich-editor{padding:9px}.lms-rich-editor-toolbar{align-items:stretch}.lms-rich-editor-tools{justify-content:flex-start}.lms-rich-editor .bn-editor{padding:10px 4px}.lms-emoji-options{left:0;right:auto}}
