@@ -1,11 +1,11 @@
 /** Safe subset of BlockNote's persisted JSON schema. Never render raw HTML. */
 const blockTypes = new Set([
   "paragraph", "heading", "bulletListItem", "numberedListItem",
-  "checkListItem", "toggleListItem", "quote", "codeBlock", "table", "image"
+  "checkListItem", "toggleListItem", "quote", "codeBlock", "table", "image", "callout"
 ]);
 const propsKeys = new Set([
   "textColor", "backgroundColor", "textAlignment", "level", "checked",
-  "language", "isToggleable", "url", "name", "caption", "showPreview", "previewWidth"
+  "language", "isToggleable", "url", "name", "caption", "showPreview", "previewWidth", "variant"
 ]);
 const styleKeys = new Set(["bold", "italic", "underline", "strike", "code", "textColor", "backgroundColor"]);
 const uuid = "[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}";
@@ -33,6 +33,8 @@ function validProps(value: unknown, type: string): boolean {
       if (type !== "image" || typeof v !== "string" || !imageURL.test(v)) return false;
     } else if (key === "name" || key === "caption" || key === "language") {
       if (typeof v !== "string" || v.length > 1000) return false;
+    } else if (key === "variant") {
+      if (type !== "callout" || !["important", "tip", "warning", "example", "remember"].includes(String(v))) return false;
     } else if (key === "level") {
       if (![1, 2, 3].includes(v as number)) return false;
     } else if (key === "previewWidth") {
