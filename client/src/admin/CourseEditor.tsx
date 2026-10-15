@@ -131,6 +131,7 @@ function ModuleBlock({
   onReload: () => void;
 }) {
   const [newLessonTitle, setNewLessonTitle] = useState("");
+  const [expanded, setExpanded] = useState(true);
 
   async function addLesson(e: React.FormEvent) {
     e.preventDefault();
@@ -155,8 +156,8 @@ function ModuleBlock({
 
   return (
     <div className="lms-module-card lms-panel">
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <strong>{module.title}</strong>
+      <div className="lms-collapse-header">
+        <button type="button" className="lms-collapse-toggle" aria-expanded={expanded} aria-controls={`module-content-${module.id}`} onClick={() => setExpanded((v) => !v)}>{expanded ? "▾" : "▸"} {module.title} <span className="lms-collapse-count">({module.lessons.length} уроков)</span></button>
         <div>
           <button onClick={() => onMove(-1)} disabled={isFirst}>
             ↑
@@ -168,6 +169,7 @@ function ModuleBlock({
         </div>
       </div>
 
+      <div id={`module-content-${module.id}`} hidden={!expanded}>
       <div style={{ marginTop: 6 }}>
         <TestBlock test={module.test} scope="module" parentId={module.id} onReload={onReload} />
       </div>
@@ -195,6 +197,7 @@ function ModuleBlock({
           <button type="submit">Добавить урок</button>
         </form>
       </div>
+      </div>
     </div>
   );
 }
@@ -219,6 +222,7 @@ function LessonBlock({
   const [videoProvider, setVideoProvider] = useState(lesson.video_provider ?? "");
   const [videoRef, setVideoRef] = useState(lesson.video_ref ?? "");
   const [uploading, setUploading] = useState(false);
+  const [expanded, setExpanded] = useState(true);
 
   async function save() {
     await api.patch(`/admin/lessons/${lesson.id}`, {
@@ -261,8 +265,8 @@ function LessonBlock({
 
   return (
     <div className="lms-lesson-card">
-      <div style={{ display: "flex", justifyContent: "space-between" }}>
-        <input value={title} onChange={(e) => setTitle(e.target.value)} style={{ fontWeight: 600 }} />
+      <div className="lms-collapse-header">
+        <button type="button" className="lms-collapse-toggle" aria-expanded={expanded} aria-controls={`lesson-content-${lesson.id}`} onClick={() => setExpanded((v) => !v)}>{expanded ? "▾" : "▸"} {title || "Без названия"}</button>
         <div>
           <button onClick={() => onMove(-1)} disabled={isFirst}>
             ↑
@@ -274,6 +278,8 @@ function LessonBlock({
         </div>
       </div>
 
+      <div id={`lesson-content-${lesson.id}`} hidden={!expanded}>
+      <input aria-label="Название урока" value={title} onChange={(e) => setTitle(e.target.value)} style={{ fontWeight: 600, width: "100%", marginTop: 10 }} />
       <textarea
         placeholder="Текст урока"
         value={textContent}
@@ -318,6 +324,7 @@ function LessonBlock({
 
       <div style={{ marginTop: 8 }}>
         <TestBlock test={lesson.test} scope="lesson" parentId={lesson.id} onReload={onReload} />
+      </div>
       </div>
     </div>
   );
