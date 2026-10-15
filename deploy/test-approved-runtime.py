@@ -118,7 +118,7 @@ esac
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual((self.app / "server/dist/index.js").read_text().strip(), "NEW_SERVER")
         self.assertEqual((self.web / "index.html").read_text().strip(), "NEW_CLIENT", result.stdout + result.stderr)
-        self.assertEqual((self.base / "service").read_text(), "active")
+        self.assertEqual((self.base / "service").read_text().strip(), "active")
         self.assertFalse((self.backups / "RECONCILE-BEFORE-NEXT-DEPLOY").exists())
 
 
