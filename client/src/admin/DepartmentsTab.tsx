@@ -21,17 +21,22 @@ export function DepartmentsTab() {
   }
 
   async function remove(id: string) {
+    if (!window.confirm("Удалить отдел?")) return;
     await api.delete(`/admin/departments/${id}`);
     reload();
   }
 
   return (
-    <div>
-      <form onSubmit={create} style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+    <section className="lms-admin-list-page">
+      <div className="lms-dashboard-heading"><div><h2>Отделы</h2><p>Организационная структура сотрудников</p></div></div>
+      <div className="lms-panel"><div className="lms-panel-head"><h3>Новый отдел</h3></div>
+      <form onSubmit={create} className="lms-course-create-row">
         <input placeholder="Название отдела" value={name} onChange={(e) => setName(e.target.value)} required />
         <button type="submit">Добавить</button>
-      </form>
-      <ul>
+      </form></div>
+      <div className="lms-panel"><div className="lms-panel-head"><h3>Список отделов</h3><span>Всего: {items.length}</span></div>
+      {items.length === 0 && <div className="lms-empty">Отделов пока нет.</div>}
+      <ul className="lms-management-list">
         {items.map((d) => (
           <li key={d.id} style={{ marginBottom: 6 }}>
             {d.name}{" "}
@@ -40,7 +45,7 @@ export function DepartmentsTab() {
             </button>
           </li>
         ))}
-      </ul>
-    </div>
+      </ul></div>
+    </section>
   );
 }

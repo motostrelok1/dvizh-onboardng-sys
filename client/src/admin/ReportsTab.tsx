@@ -62,8 +62,9 @@ export function ReportsTab() {
   }
 
   return (
-    <div>
-      <div style={{ border: "1px solid #ddd", borderRadius: 10, padding: 12, marginBottom: 16 }}>
+    <section className="lms-admin-list-page">
+      <div className="lms-dashboard-heading"><div><h2>Отчёты</h2><p>Результаты обучения, активность и аналитика</p></div></div>
+      <div className="lms-panel">
         <strong style={{ fontSize: 13 }}>Формирование отчёта</strong>
         <div style={{ display: "flex", gap: 12, marginTop: 6, alignItems: "center" }}>
           <select value={mode} onChange={(e) => setMode(e.target.value)}>
@@ -80,7 +81,7 @@ export function ReportsTab() {
         </div>
       </div>
 
-      <div style={{ display: "flex", gap: 8, marginBottom: 16, alignItems: "center" }}>
+      <div className="lms-panel lms-report-filters">
         <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         <select value={departmentId} onChange={(e) => setDepartmentId(e.target.value)}>
           <option value="">Все отделы</option>
@@ -104,7 +105,7 @@ export function ReportsTab() {
         </a>
       </div>
 
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+      <div className="lms-panel"><div className="lms-table-scroll"><table className="lms-table">
         <thead>
           <tr style={{ textAlign: "left", borderBottom: "1px solid #ccc" }}>
             <th>Сотрудник</th>
@@ -133,8 +134,9 @@ export function ReportsTab() {
             </tr>
           ))}
         </tbody>
-      </table>
+      </table></div>
       {reports.length === 0 && <p style={{ color: "#888" }}>На эту дату отчётов нет.</p>}
-    </div>
+      </div>
+    </section>
   );
 }

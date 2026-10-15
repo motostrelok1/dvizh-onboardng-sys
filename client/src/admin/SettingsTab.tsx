@@ -93,6 +93,7 @@ export function SettingsTab() {
   }
 
   async function resetDefaults() {
+    if (!window.confirm("Сбросить настройки аналитики к значениям по умолчанию?")) return;
     await api.post("/admin/settings/analytics/reset");
     reload();
   }
@@ -106,14 +107,15 @@ export function SettingsTab() {
   if (!settings) return <p>Загрузка…</p>;
 
   return (
-    <div>
-      <h2>Пороги правил аналитики</h2>
+    <section className="lms-admin-list-page">
+      <div><h2>Настройки аналитики</h2><p className="lms-info-note">Пороговые значения и уведомления</p></div>
+      <h3>Пороги правил аналитики</h3>
       <p style={{ color: "#888", fontSize: 13 }}>
         Общие значения. Для отдельного курса их можно переопределить в редакторе курса.
       </p>
 
       {RULES.map((rule) => (
-        <div key={rule.key} style={{ border: "1px solid #ddd", borderRadius: 10, padding: 12, marginBottom: 10 }}>
+        <div key={rule.key} className="lms-panel">
           <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
             <input
               type="checkbox"
@@ -139,8 +141,8 @@ export function SettingsTab() {
         </div>
       ))}
 
-      <div style={{ marginBottom: 24 }}>
-        <button onClick={save}>Сохранить пороги</button>{" "}
+      <div className="lms-setting-actions">
+        <button className="lms-primary-btn" onClick={save}>Сохранить пороги</button>{" "}
         <button onClick={resetDefaults}>Вернуть значения по умолчанию</button>{" "}
         <button onClick={loadLog}>Журнал изменений</button>
       </div>
@@ -175,7 +177,7 @@ export function SettingsTab() {
         </div>
       )}
 
-      <NotificationRulesSection />
+      <div className="lms-panel"><NotificationRulesSection /></div>
 
       <h2 style={{ marginTop: 24 }}>Проблемные вопросы</h2>
       {problemQuestions.length === 0 && <p style={{ color: "#888" }}>Пока ничего не превышает порог.</p>}
@@ -187,6 +189,6 @@ export function SettingsTab() {
           </div>
         </div>
       ))}
-    </div>
+    </section>
   );
 }
