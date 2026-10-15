@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "./api";
 import { TestBlock } from "./TestBlock";
+import { CoursePreview } from "./CoursePreview";
 import { CourseAnalyticsSettings } from "./CourseAnalyticsSettings";
 
 type Attachment = { id: string; file_name: string; size_bytes: number };
@@ -21,6 +22,7 @@ type Tree = { course: Course; modules: Module[] };
 
 export function CourseEditor({ courseId, onBack }: { courseId: string; onBack: () => void }) {
   const [tree, setTree] = useState<Tree | null>(null);
+  const [preview, setPreview] = useState(false);
   const [newModuleTitle, setNewModuleTitle] = useState("");
 
   function reload() {
@@ -29,6 +31,7 @@ export function CourseEditor({ courseId, onBack }: { courseId: string; onBack: (
 
   useEffect(reload, [courseId]);
 
+  if (preview) return <CoursePreview courseId={courseId} onBack={() => setPreview(false)} />;
   if (!tree) return <p>Загрузка…</p>;
   const { course, modules } = tree;
 
@@ -64,7 +67,7 @@ export function CourseEditor({ courseId, onBack }: { courseId: string; onBack: (
         ← К списку курсов
       </button>
 
-      <h2>{course.title}</h2>
+      <div className="lms-preview-toolbar"><h2>{course.title}</h2><button type="button" className="lms-primary-btn" onClick={() => setPreview(true)}>Предпросмотр курса</button></div>
       <div style={{ display: "flex", gap: 12, marginBottom: 20 }}>
         <label>
           Статус:{" "}
