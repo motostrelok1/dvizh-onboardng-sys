@@ -5,6 +5,7 @@ import "@blocknote/core/fonts/inter.css";
 import "@blocknote/mantine/style.css";
 import { legacyTextToBlocks } from "./legacy-content";
 import "./blocknote-theme.css";
+import { lessonBlockSchema } from "./blocknote-schema";
 
 /** Shared read-only view for course preview and employee lessons. */
 export function RichLessonView({ contentBlocks, textContent }: {
@@ -13,7 +14,8 @@ export function RichLessonView({ contentBlocks, textContent }: {
 }) {
   const initialContent = contentBlocks?.length ? contentBlocks : legacyTextToBlocks(textContent);
   const editor = useCreateBlockNote({
-    initialContent: initialContent as PartialBlock[]
+    schema: lessonBlockSchema,
+    initialContent: initialContent as any
   });
   return <div className="lms-rich-preview">
     <BlockNoteView editor={editor} editable={false} theme="light" />
