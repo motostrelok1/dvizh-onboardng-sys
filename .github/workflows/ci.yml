@@ -32,6 +32,7 @@ jobs:
         run: |
           bash -n deploy/approved-deploy.sh
           python3 deploy/test-approved-deploy.py -v
+          sudo python3 deploy/test-approved-runtime.py -v
       - name: Build server and client (including PWA)
         run: npm run build
       - name: Check Nginx privacy configuration and actual logs
