@@ -1066,3 +1066,7 @@ Default Nginx body buffer иначе может заполнить свой temp
 [CI на 5eac679](https://github.com/motostrelok1/dvizh-onboardng-sys/actions/runs/38382124194) — 399/399
 без ошибок/пропусков, migrations/re-run/оба preflight, JUnit gate/summary/
 artifact, сервер/клиент/PWA и Nginx прошли. DEV-05.2 [x] в PROGRESS.md.
+
+## Планируемый редактор уроков BlockNote
+
+Пользователь выбрал блочный редактор BlockNote в стиле Notion для уроков (изображения, эмодзи, таблицы, форматирование, учебные callout-блоки). Сейчас готова [спецификация](docs/BLOCKNOTE-SPEC.md); реализация BN-01–BN-07 **впереди**. Нельзя считать редактор внедрённым до PR и безопасного deployment миграции/зависимостей.
