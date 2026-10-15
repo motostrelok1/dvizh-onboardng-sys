@@ -88,7 +88,7 @@ export async function meRoutes(app: FastifyInstance) {
 
     const lessonsRes = await pool.query(
       `select id, module_id, title, position,
-              (text_content is not null and text_content != '') as has_text,
+              ((text_content is not null and text_content != '') or content_blocks is not null) as has_text,
               (video_provider is not null) as has_video
        from lessons where module_id = any($1) order by position`,
       [modules.map((m) => m.id)]
@@ -158,6 +158,8 @@ export async function meRoutes(app: FastifyInstance) {
         id: lesson.id,
         title: lesson.title,
         textContent: lesson.text_content,
+        contentBlocks: lesson.content_blocks,
+        contentRevision: lesson.content_revision,
         videoProvider: lesson.video_provider,
         videoRef: lesson.video_ref
       },
