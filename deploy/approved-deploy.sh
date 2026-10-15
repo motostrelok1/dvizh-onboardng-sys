@@ -46,7 +46,7 @@ rollback() {
       find "$APP/server/dist" -type f -exec chmod a+r {} + || true
     fi
     if [[ -d "$BACKUP/frontend" ]]; then
-      rsync -a --delete --chmod=D755,F644 "$BACKUP/frontend/" "$WEB/" || true
+      rsync -a --checksum --delete --chmod=D755,F644 "$BACKUP/frontend/" "$WEB/" || true
     fi
     if ! systemctl start lms; then
       echo "CRITICAL: lms.service failed to restart after rollback" >&2
