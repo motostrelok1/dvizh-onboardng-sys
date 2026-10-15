@@ -32,6 +32,7 @@ jobs:
       - name: Validate approved deployment shell syntax and guardrails
         run: |
           bash -n deploy/approved-deploy.sh
+          bash -n deploy/blocknote-release.sh
           python3 deploy/test-approved-deploy.py -v
           sudo python3 deploy/test-approved-runtime.py -v
       - name: Build server and client (including PWA)
