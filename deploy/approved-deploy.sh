@@ -49,7 +49,11 @@ rollback() {
     if [[ -d "$BACKUP/frontend" ]]; then
       rsync -a --delete --chmod=D755,F644 "$BACKUP/frontend/" "$WEB/" || true
     fi
-    systemctl start lms || true
+    if ! systemctl start lms; then
+      echo "CRITICAL: lms.service failed to restart after rollback" >&2
+    elif ! curl --fail --silent --show-error --max-time 10 http://127.0.0.1:3001/health >/dev/null; then
+      echo "CRITICAL: old LMS is not healthy after rollback" >&2
+    fi
     if [[ "$(git rev-parse HEAD)" != "$FROM" ]]; then
       echo "$FROM" > "$BACKUPS/RECONCILE-BEFORE-NEXT-DEPLOY"
       echo "WARNING: old builds restored but git HEAD advanced. Manual reconciliation required." >&2
