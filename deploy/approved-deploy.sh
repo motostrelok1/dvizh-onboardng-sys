@@ -42,11 +42,14 @@ rollback() {
     echo "Deploy failed; restoring previous server/frontend builds" >&2
     if [[ -d "$BACKUP/server-dist" ]]; then
       rsync -a --delete "$BACKUP/server-dist/" "$APP/server/dist/" || true
+      find "$APP/server/dist" -type d -exec chmod a+rx {} + || true
+      find "$APP/server/dist" -type f -exec chmod a+r {} + || true
     fi
     if [[ -d "$BACKUP/frontend" ]]; then
       rsync -a --delete --chmod=D755,F644 "$BACKUP/frontend/" "$WEB/" || true
     fi
     systemctl start lms || true
+    echo "NOTICE: checkout may be at new commit; reconcile git state before next deploy" >&2
   fi
   exit "$rc"
 }
@@ -63,10 +66,12 @@ rsync -a "$APP/server/dist/" "$BACKUP/server-dist/"
 test -s "$BACKUP/frontend/index.html"
 test -s "$BACKUP/server-dist/index.js"
 git merge --ff-only "$TARGET"
-npm ci
+# Lockfiles and dependencies are gated above. Avoid npm ci against live node_modules.
+[[ -d "$APP/node_modules" ]] || { echo "Dependencies missing; manual rollout required" >&2; exit 1; }
 npm run build
-# Restore read/traverse access after building with a restrictive root umask.
-chmod -R a+rX "$APP/node_modules" "$APP/server/dist"
+# Only compiled artifacts need read access; never chmod secrets/uploads.
+find "$APP/server/dist" -type d -exec chmod a+rx {} +
+find "$APP/server/dist" -type f -exec chmod a+r {} +
 test -s "$APP/client/dist/index.html"
 test -s "$APP/server/dist/index.js"
 rsync -a --delete --chmod=D755,F644 "$APP/client/dist/" "$WEB/"
