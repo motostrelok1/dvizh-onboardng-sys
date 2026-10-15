@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import type { PartialBlock } from "@blocknote/core";
+import { BlockLessonEditor } from "../editor/BlockLessonEditor";
 import { api } from "./api";
 import { TestBlock } from "./TestBlock";
 import { CoursePreview } from "./CoursePreview";
@@ -11,6 +13,8 @@ type Lesson = {
   title: string;
   position: number;
   text_content: string | null;
+  content_blocks?: PartialBlock[] | null;
+  content_revision?: number;
   video_provider: string | null;
   video_ref: string | null;
   attachments: Attachment[];
@@ -275,7 +279,6 @@ function LessonBlock({
   onReload: () => void;
 }) {
   const [title, setTitle] = useState(lesson.title);
-  const [textContent, setTextContent] = useState(lesson.text_content ?? "");
   const [videoProvider, setVideoProvider] = useState(lesson.video_provider ?? "");
   const [videoRef, setVideoRef] = useState(lesson.video_ref ?? "");
   const [uploading, setUploading] = useState(false);
@@ -284,7 +287,6 @@ function LessonBlock({
   async function save() {
     await api.patch(`/admin/lessons/${lesson.id}`, {
       title,
-      textContent,
       videoProvider: videoProvider || null,
       videoRef: videoRef || null
     });
@@ -338,13 +340,10 @@ function LessonBlock({
 
       <div id={`lesson-content-${lesson.id}`} hidden={!expanded}>
       <input aria-label="Название урока" value={title} onChange={(e) => setTitle(e.target.value)} style={{ fontWeight: 600, width: "100%", marginTop: 10 }} />
-      <textarea
-        placeholder="Текст урока"
-        value={textContent}
-        onChange={(e) => setTextContent(e.target.value)}
-        rows={3}
-        style={{ width: "100%", marginTop: 6 }}
-      />
+      <BlockLessonEditor key={lesson.id} lessonId={lesson.id}
+        contentBlocks={lesson.content_blocks ?? null}
+        textContent={lesson.text_content}
+        contentRevision={lesson.content_revision ?? 0} />
 
       <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
         <select value={videoProvider} onChange={(e) => setVideoProvider(e.target.value)}>
@@ -362,7 +361,7 @@ function LessonBlock({
       </div>
 
       <button type="button" className="lms-editor-save" onClick={save} style={{ marginTop: 6 }}>
-        Сохранить урок
+        Сохранить название и видео
       </button>
 
       <div style={{ marginTop: 8 }}>
