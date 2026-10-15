@@ -53,4 +53,4 @@ jobs:
           SHA: ${{ github.sha }}
         run: |
           test -n "$HOST" && test -n "$USER"
-          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=15 "$USER@$HOST" "sudo -n bash -s -- '$SHA'" < deploy/approved-deploy.sh
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=15 "$USER@$HOST" "sudo -n /usr/local/sbin/lms-approved-deploy '$SHA'"
