@@ -55,80 +55,55 @@ export function DashboardTab() {
   }
 
   return (
-    <div>
-      <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-        <select value={departmentId} onChange={(e) => setDepartmentId(e.target.value)}>
-          <option value="">Все отделы</option>
-          {departments.map((d) => (
-            <option key={d.id} value={d.id}>
-              {d.name}
-            </option>
-          ))}
-        </select>
-        <select value={groupId} onChange={(e) => setGroupId(e.target.value)}>
-          <option value="">Все группы</option>
-          {groups.map((g) => (
-            <option key={g.id} value={g.id}>
-              {g.name}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {summary && (
-        <div style={{ display: "flex", gap: 12, marginBottom: 20 }}>
-          <Tile label="Сотрудников" value={summary.totalEmployees} />
-          <Tile label="Активных (7 дней)" value={summary.activeEmployees} />
-          <Tile
-            label="Средний прогресс"
-            value={summary.averageProgressPercent !== null ? `${summary.averageProgressPercent}%` : "—"}
-          />
-          <Tile label="Просрочено" value={summary.overdueAssignmentsCount} alert={summary.overdueAssignmentsCount > 0} />
-          <Tile label="С флагами внимания" value={summary.flaggedEmployeesCount} alert={summary.flaggedEmployeesCount > 0} />
+    <div className="lms-dashboard">
+      <div className="lms-dashboard-heading">
+        <div><h2>Обзор обучения</h2><p>Актуальные показатели и сотрудники, требующие внимания</p></div>
+        <div className="lms-filters">
+          <select aria-label="Фильтр по отделу" value={departmentId} onChange={(e) => setDepartmentId(e.target.value)}>
+            <option value="">Все отделы</option>{departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+          </select>
+          <select aria-label="Фильтр по группе" value={groupId} onChange={(e) => setGroupId(e.target.value)}>
+            <option value="">Все группы</option>{groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+          </select>
         </div>
-      )}
-
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
-        <thead>
-          <tr style={{ textAlign: "left", borderBottom: "1px solid #ccc" }}>
-            <th>Сотрудник</th>
-            <th>Отдел</th>
-            <th>Курсов</th>
-            <th>Прогресс</th>
-            <th>Просрочено</th>
-            <th>Флагов</th>
-            <th>Последний вход</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {employees.map((e) => (
-            <tr key={e.id} style={{ borderBottom: "1px solid #eee" }}>
-              <td>{e.fullName}</td>
-              <td>{e.departmentName ?? "—"}</td>
-              <td>{e.assignedCourses}</td>
-              <td>{e.averageProgress !== null ? `${e.averageProgress}%` : "—"}</td>
-              <td style={{ color: e.overdueCount > 0 ? "crimson" : undefined }}>{e.overdueCount || "—"}</td>
-              <td style={{ color: e.flagsCount > 0 ? "#c98000" : undefined }}>{e.flagsCount || "—"}</td>
-              <td>{e.lastSessionAt ? new Date(e.lastSessionAt).toLocaleString() : "никогда"}</td>
-              <td>
-                <button onClick={() => setOpenEmployeeId(e.id)} style={{ fontSize: 12 }}>
-                  карточка
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      </div>
+      {summary ? (
+        <div className="lms-stats">
+          <Tile label="Всего сотрудников" value={summary.totalEmployees} />
+          <Tile label="Активных за 7 дней" value={summary.activeEmployees} />
+          <Tile label="Средний прогресс" value={summary.averageProgressPercent !== null ? `${summary.averageProgressPercent}%` : "—"} />
+          <Tile label="Просроченные назначения" value={summary.overdueAssignmentsCount} alert={summary.overdueAssignmentsCount > 0} />
+          <Tile label="Требуют внимания" value={summary.flaggedEmployeesCount} alert={summary.flaggedEmployeesCount > 0} />
+        </div>
+      ) : <div className="lms-panel">Загрузка показателей…</div>}
+      <section className="lms-panel">
+        <div className="lms-panel-head"><h3>Сотрудники</h3><span>Найдено: {employees.length}</span></div>
+        {employees.length === 0 ? (
+          <div className="lms-empty"><strong>Сотрудников пока нет</strong>Добавьте сотрудников или измените фильтры, чтобы увидеть результаты.</div>
+        ) : (
+          <div className="lms-table-scroll">
+            <table className="lms-table">
+              <thead><tr><th>Сотрудник</th><th>Отдел</th><th>Курсов</th><th>Прогресс</th><th>Просрочено</th><th>Флагов</th><th>Последний вход</th><th>Действие</th></tr></thead>
+              <tbody>{employees.map((e) => (
+                <tr key={e.id}>
+                  <td className="lms-employee-name">{e.fullName}</td>
+                  <td>{e.departmentName ?? "—"}</td>
+                  <td>{e.assignedCourses}</td>
+                  <td>{e.averageProgress !== null ? <>{e.averageProgress}%<div className="lms-progress"><span style={{ width: `${Math.max(0, Math.min(100, e.averageProgress))}%` }} /></div></> : "—"}</td>
+                  <td className={e.overdueCount > 0 ? "lms-attention" : ""}>{e.overdueCount || "—"}</td>
+                  <td className={e.flagsCount > 0 ? "lms-attention" : ""}>{e.flagsCount || "—"}</td>
+                  <td>{e.lastSessionAt ? new Date(e.lastSessionAt).toLocaleString() : "никогда"}</td>
+                  <td><button className="lms-card-btn" onClick={() => setOpenEmployeeId(e.id)}>Карточка</button></td>
+                </tr>
+              ))}</tbody>
+            </table>
+          </div>
+        )}
+      </section>
     </div>
   );
 }
 
 function Tile({ label, value, alert }: { label: string; value: string | number; alert?: boolean }) {
-  return (
-    <div style={{ border: "1px solid #ddd", borderRadius: 10, padding: "10px 16px", minWidth: 100 }}>
-      <div style={{ fontSize: 12, color: "#888" }}>{label}</div>
-      <div style={{ fontSize: 22, fontWeight: 700, color: alert ? "crimson" : undefined }}>{value}</div>
-    </div>
-  );
+  return <div className={`lms-stat${alert ? " lms-stat-warning" : ""}`}><div className="lms-stat-label">{label}</div><div className="lms-stat-value">{value}</div><div className="lms-stat-accent" /></div>;
 }
