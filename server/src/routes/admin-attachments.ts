@@ -138,6 +138,27 @@ export async function adminAttachmentRoutes(app: FastifyInstance,
     }
   );
 
+  // Administrative preview: read-only attachment stream. No learning event or progress tracking.
+  // Kept separate from the employee download route which intentionally logs events.
+  app.get<{ Params: { id: string } }>(
+    "/admin/attachments/:id/preview",
+    { preHandler: requireAdmin, schema: schema(undefined, idParams()) },
+    async (req, reply) => {
+      const res = await pool.query(
+        "select id, lesson_id, file_name, file_path from lesson_attachments where id = $1",
+        [req.params.id]
+      );
+      const attachment = res.rows[0];
+      if (!attachment) return reply.code(404).send({ error: "not_found" });
+      const handle = await openAttachmentForRead(attachment.lesson_id, attachment.file_path);
+      reply.header("Cache-Control", "no-store");
+      reply.header("Content-Disposition", `attachment; filename="${encodeURIComponent(attachment.file_name)}"`);
+      reply.header("X-Content-Type-Options", "nosniff");
+      reply.type(attachmentContentType(attachment.file_path));
+      return reply.send(handle.createReadStream());
+    }
+  );
+
   // Скачивание — только вошедшему пользователю с доступом к курсу этого урока
   // (админ — всегда; сотрудник — если курс назначен и не просрочен, либо он
   // записан на курс из открытого каталога).
