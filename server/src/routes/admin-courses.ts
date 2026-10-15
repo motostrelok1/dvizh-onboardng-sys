@@ -3,7 +3,7 @@ import { pool } from "../db.js";
 import { requireAdmin } from "../auth/middleware.js";
 import { installApiValidation, schema, object, text, uuid, idParams } from "../api-validation.js";
 import { withTransaction, lockOrderingParent, nextPosition, reorderChildren } from "../data-integrity.js";
-import { validateLessonBlocks } from "../lesson-blocks.js";
+import { validateLessonBlocks, lessonImageIds } from "../lesson-blocks.js";
 
 const orderIds = { type: "array", items: uuid, uniqueItems: true, maxItems: 10000 };
 
@@ -210,6 +210,20 @@ export async function adminCourseRoutes(app: FastifyInstance) {
     if (Buffer.byteLength(json, "utf8") > 250_000) {
       reply.code(413);
       return { error: "lesson_content_too_large" };
+    }
+    // Images are existing lesson-owned attachment IDs, not arbitrary external
+    // URLs. The storage endpoint separately checks authenticated course access.
+    const imageIds = lessonImageIds(body.contentBlocks);
+    if (imageIds.length) {
+      const owned = await pool.query(
+        `select id from lesson_attachments where lesson_id = $1
+           and id = any($2::uuid[])`,
+        [req.params.id, imageIds]
+      );
+      if (owned.rowCount !== imageIds.length) {
+        reply.code(400);
+        return { error: "invalid_lesson_image_reference" };
+      }
     }
     const result = await pool.query(
       `update lessons set content_blocks = $2::jsonb,
