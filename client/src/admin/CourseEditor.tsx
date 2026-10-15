@@ -62,13 +62,13 @@ export function CourseEditor({ courseId, onBack }: { courseId: string; onBack: (
   }
 
   return (
-    <div>
-      <button onClick={onBack} style={{ marginBottom: 12 }}>
+    <div className="lms-course-editor">
+      <button className="lms-card-btn" onClick={onBack} style={{ marginBottom: 12 }}>
         ← К списку курсов
       </button>
 
       <div className="lms-preview-toolbar"><h2>{course.title}</h2><button type="button" className="lms-primary-btn" onClick={() => setPreview(true)}>Предпросмотр курса</button></div>
-      <div style={{ display: "flex", gap: 12, marginBottom: 20 }}>
+      <div className="lms-course-settings lms-panel">
         <label>
           Статус:{" "}
           <select value={course.status} onChange={(e) => updateCourse({ status: e.target.value })}>
@@ -86,7 +86,7 @@ export function CourseEditor({ courseId, onBack }: { courseId: string; onBack: (
         </label>
       </div>
 
-      <div style={{ marginBottom: 16 }}>
+      <div className="lms-panel" style={{ marginBottom: 16 }}>
         <CourseAnalyticsSettings courseId={courseId} />
       </div>
 
@@ -102,7 +102,7 @@ export function CourseEditor({ courseId, onBack }: { courseId: string; onBack: (
         />
       ))}
 
-      <form onSubmit={addModule} style={{ display: "flex", gap: 8, marginTop: 16 }}>
+      <form onSubmit={addModule} className="lms-add-row lms-panel">
         <input
           placeholder="Название модуля"
           value={newModuleTitle}
@@ -154,7 +154,7 @@ function ModuleBlock({
   }
 
   return (
-    <div style={{ border: "1px solid #ddd", borderRadius: 8, padding: 12, marginBottom: 12 }}>
+    <div className="lms-module-card lms-panel">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <strong>{module.title}</strong>
         <div>
@@ -260,7 +260,7 @@ function LessonBlock({
   }
 
   return (
-    <div style={{ background: "#fafafa", border: "1px solid #eee", borderRadius: 6, padding: 10, marginBottom: 8 }}>
+    <div className="lms-lesson-card">
       <div style={{ display: "flex", justifyContent: "space-between" }}>
         <input value={title} onChange={(e) => setTitle(e.target.value)} style={{ fontWeight: 600 }} />
         <div>
