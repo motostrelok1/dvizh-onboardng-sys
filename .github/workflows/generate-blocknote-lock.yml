@@ -1,0 +1,38 @@
+name: Prepare BlockNote lockfile (temporary)
+
+on:
+  push:
+    branches: [feature/blocknote-dependencies]
+
+permissions:
+  contents: write
+
+jobs:
+  lockfile:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install pinned free BlockNote packages and update lockfile
+        run: |
+          npm install --workspace client --save-exact \
+            @blocknote/core@0.55.0 @blocknote/react@0.55.0 \
+            @blocknote/mantine@0.55.0 \
+            @mantine/core@8 @mantine/hooks@8 @mantine/utils@8
+      - name: Verify install and compile
+        run: |
+          npm ci
+          npm run build
+      - name: Commit generated dependency manifests
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add client/package.json package-lock.json
+          if ! git diff --cached --quiet; then
+            git commit -m "build: pin BlockNote and Mantine dependencies with npm lock"
+            git push origin HEAD:feature/blocknote-dependencies
+          fi
