@@ -31,8 +31,7 @@ for cmd in pg_dump pg_restore tar rsync curl git npm systemctl; do command -v "$
 systemctl is-active --quiet lms || { echo "LMS not active before deployment" >&2; exit 1; }
 mkdir -p "$BACKUPS"
 chmod 700 "$BACKUPS"
-BACKUP="$BACKUPS/action-$(date -u +%Y%m%dT%H%M%SZ)-$"
-mkdir -m 700 "$BACKUP"
+BACKUP="$(mktemp -d "$BACKUPS/action-$(date -u +%Y%m%dT%H%M%SZ)-XXXXXXXX")"
 echo "Backup: $BACKUP; old commit: $FROM"
 stopped=0
 published=0
@@ -82,7 +81,7 @@ find "$APP/server/dist" -type d -exec chmod a+rx {} +
 find "$APP/server/dist" -type f -exec chmod a+r {} +
 test -s "$APP/client/dist/index.html"
 test -s "$APP/server/dist/index.js"
-rsync -a --delete --chmod=D755,F644 "$APP/client/dist/" "$WEB/"
+rsync -a --checksum --delete --chmod=D755,F644 "$APP/client/dist/" "$WEB/"
 published=1
 systemctl start lms
 for i in $(seq 1 10); do
