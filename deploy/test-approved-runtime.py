@@ -75,6 +75,7 @@ fi
 echo NEW_SERVER > "$SANDBOX/app/server/dist/index.js"
 """,
             "curl": """#!/bin/bash
+if [[ "$FAIL_HEALTH" == "1" ]] && [[ "$(cat "$SANDBOX/app/server/dist/index.js")" == "NEW_SERVER" ]]; then exit 22; fi
 case "${!#}" in
   *index.html) echo '<div id="root"></div>';;
   *) echo '{"status":"ok"}';;
@@ -89,14 +90,16 @@ esac
         script = script.replace('APP=/opt/lms', f'APP={self.app}')
         script = script.replace('WEB=/var/www/lms/client-dist', f'WEB={self.web}')
         script = script.replace('BACKUPS=/var/backups/lms', f'BACKUPS={self.backups}')
+        script = script.replace("sleep 2", "sleep 0.01")
         self.script = base / "approved-deploy.sh"
         self.script.write_text(script)
         self.script.chmod(0o700)
         self.env = dict(os.environ, PATH=str(self.bin)+os.pathsep+os.environ["PATH"],
-                        SANDBOX=str(base), NEW_SHA=NEW, FAIL_BUILD="0")
+                        SANDBOX=str(base), NEW_SHA=NEW, FAIL_BUILD="0", FAIL_HEALTH="0")
 
-    def run_deploy(self, fail=False):
-        env = dict(self.env, FAIL_BUILD="1" if fail else "0")
+    def run_deploy(self, fail=False, fail_health=False):
+        env = dict(self.env, FAIL_BUILD="1" if fail else "0",
+                   FAIL_HEALTH="1" if fail_health else "0")
         return subprocess.run(["bash", str(self.script), NEW], env=env,
                               text=True, stdout=subprocess.PIPE,
                               stderr=subprocess.PIPE, timeout=30)
@@ -112,6 +115,14 @@ esac
         again = self.run_deploy()
         self.assertNotEqual(again.returncode, 0)
         self.assertIn("reconciliation", again.stderr)
+
+    def test_post_start_health_failure_restores_previous_binaries(self):
+        result = self.run_deploy(fail_health=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual((self.app / "server/dist/index.js").read_text(), "OLD_SERVER")
+        self.assertEqual((self.web / "index.html").read_text(), "OLD_CLIENT")
+        self.assertEqual((self.base / "service").read_text().strip(), "active")
+        self.assertTrue((self.backups / "RECONCILE-BEFORE-NEXT-DEPLOY").exists())
 
     def test_successful_deployment_keeps_new_binaries(self):
         result = self.run_deploy()
