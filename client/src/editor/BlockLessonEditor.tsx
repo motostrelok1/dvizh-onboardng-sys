@@ -1,3 +1,4 @@
+import { ru } from "@blocknote/core/locales";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { PartialBlock } from "@blocknote/core";
 import { BlockNoteView } from "@blocknote/mantine";
@@ -46,7 +47,7 @@ export function BlockLessonEditor({ lessonId, contentBlocks, textContent, conten
   }, [lessonId]);
 
   const initialContent = contentBlocks?.length ? contentBlocks : legacyTextToBlocks(textContent);
-  const editor = useCreateBlockNote({ schema: lessonBlockSchema, initialContent: initialContent as any, uploadFile }, [lessonId]);
+  const editor = useCreateBlockNote({ dictionary: ru, schema: lessonBlockSchema, initialContent: initialContent as any, uploadFile }, [lessonId]);
 
   const save = useCallback(async () => {
     if (inFlight.current || savedVersion.current === dirtyVersion.current) return;
