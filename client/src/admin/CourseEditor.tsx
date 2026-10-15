@@ -203,14 +203,14 @@ function ModuleBlock({
       <div className="lms-collapse-header">
         <span draggable onDragStart={(e) => { e.dataTransfer.setData("application/x-lms-module", module.id); e.dataTransfer.effectAllowed = "move"; onDragStart(); }} onDragEnd={onDragEnd} className="lms-drag-handle" title="Перетащить модуль" aria-label="Перетащить модуль">⠿</span>
         <button type="button" className="lms-collapse-toggle" aria-expanded={expanded} aria-controls={`module-content-${module.id}`} onClick={() => setExpanded((v) => !v)}>{expanded ? "▾" : "▸"} {module.title} <span className="lms-collapse-count">({module.lessons.length} уроков)</span></button>
-        <div>
-          <button onClick={() => onMove(-1)} disabled={isFirst}>
+        <div className="lms-editor-actions">
+          <button type="button" className="lms-editor-icon" title="Переместить выше" aria-label="Переместить выше" onClick={() => onMove(-1)} disabled={isFirst}>
             ↑
           </button>
-          <button onClick={() => onMove(1)} disabled={isLast}>
+          <button type="button" className="lms-editor-icon" title="Переместить ниже" aria-label="Переместить ниже" onClick={() => onMove(1)} disabled={isLast}>
             ↓
           </button>
-          <button onClick={onRemove}>удалить модуль</button>
+          <button type="button" className="lms-editor-delete" onClick={onRemove}>Удалить модуль</button>
         </div>
       </div>
 
@@ -236,7 +236,7 @@ function ModuleBlock({
           />
         ))}
 
-        <form onSubmit={addLesson} style={{ display: "flex", gap: 8, marginTop: 8 }}>
+        <form className="lms-lesson-add" onSubmit={addLesson} style={{ display: "flex", gap: 8, marginTop: 8 }}>
           <input
             placeholder="Название урока"
             value={newLessonTitle}
@@ -325,14 +325,14 @@ function LessonBlock({
       <div className="lms-collapse-header">
         <span draggable onDragStart={(e) => { e.dataTransfer.setData("application/x-lms-lesson", lesson.id); e.dataTransfer.effectAllowed = "move"; onDragStart(); }} onDragEnd={onDragEnd} className="lms-drag-handle" title="Перетащить урок" aria-label="Перетащить урок">⠿</span>
         <button type="button" className="lms-collapse-toggle" aria-expanded={expanded} aria-controls={`lesson-content-${lesson.id}`} onClick={() => setExpanded((v) => !v)}>{expanded ? "▾" : "▸"} {title || "Без названия"}</button>
-        <div>
-          <button onClick={() => onMove(-1)} disabled={isFirst}>
+        <div className="lms-editor-actions">
+          <button type="button" className="lms-editor-icon" title="Переместить выше" aria-label="Переместить выше" onClick={() => onMove(-1)} disabled={isFirst}>
             ↑
           </button>
-          <button onClick={() => onMove(1)} disabled={isLast}>
+          <button type="button" className="lms-editor-icon" title="Переместить ниже" aria-label="Переместить ниже" onClick={() => onMove(1)} disabled={isLast}>
             ↓
           </button>
-          <button onClick={onRemove}>удалить урок</button>
+          <button type="button" className="lms-editor-delete" onClick={onRemove}>Удалить урок</button>
         </div>
       </div>
 
@@ -361,7 +361,7 @@ function LessonBlock({
         />
       </div>
 
-      <button onClick={save} style={{ marginTop: 6 }}>
+      <button type="button" className="lms-editor-save" onClick={save} style={{ marginTop: 6 }}>
         Сохранить урок
       </button>
 
@@ -371,7 +371,7 @@ function LessonBlock({
           {lesson.attachments.map((a) => (
             <li key={a.id} style={{ fontSize: 13 }}>
               {a.file_name} ({Math.ceil(a.size_bytes / 1024)} КБ){" "}
-              <button onClick={() => removeAttachment(a.id)} style={{ fontSize: 11 }}>
+              <button type="button" className="lms-editor-delete" onClick={() => removeAttachment(a.id)} style={{ fontSize: 11 }}>
                 удалить
               </button>
             </li>
