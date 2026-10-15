@@ -5,7 +5,7 @@ const blockTypes = new Set([
 ]);
 const propsKeys = new Set([
   "textColor", "backgroundColor", "textAlignment", "level", "checked",
-  "language", "isToggleable", "url", "name", "caption", "showPreview", "previewWidth", "variant"
+  "language", "isToggleable", "url", "name", "caption", "showPreview", "previewWidth", "variant", "start"
 ]);
 const styleKeys = new Set(["bold", "italic", "underline", "strike", "code", "textColor", "backgroundColor"]);
 const uuid = "[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}";
@@ -35,6 +35,8 @@ function validProps(value: unknown, type: string): boolean {
       if (typeof v !== "string" || v.length > 1000) return false;
     } else if (key === "variant") {
       if (type !== "callout" || !["important", "tip", "warning", "example", "remember"].includes(String(v))) return false;
+    } else if (key === "start") {
+      if (type !== "numberedListItem" || !Number.isInteger(v) || (v as number) < 1 || (v as number) > 100000) return false;
     } else if (key === "level") {
       if (![1, 2, 3].includes(v as number)) return false;
     } else if (key === "previewWidth") {
