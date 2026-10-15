@@ -1,5 +1,19 @@
 # PROGRESS.md
 
+## Фактический VDS: первый запуск 2026-10-15 (подтверждено оператором)
+
+- [x] Ubuntu 24.04, отдельный Node.js 24.22.0 в `/opt/node24` (системный Node.js 22 не менялся), исходники `/opt/lms`.
+- [x] PostgreSQL 16.15: отдельная база/роль `lms`, 17 миграций, 28 таблиц, оба integrity preflight прошли.
+- [x] systemd `lms.service` от пользователя `lms`, порт 3001 на `127.0.0.1`; локальные `/health` и `/health/db` вернули OK.
+- [x] Nginx: `/var/www/lms/client-dist`, домен `https://lms.dvizh-school.ru`, публичные GET / и /api/health вернули HTTP 200; администратор создан и вход в админку подтверждён скриншотом.
+- [x] PR #24 сохраняет loopback-bind в main; PR #23 (DEV-05.2 upload capacity) слит, main `2635dbb`.
+- [ ] **VDS ещё не обновлён до main после PR #23/#24**. Рабочая копия была `bd801ad` с локальным изменением `server/src/index.ts`; перед pull сверить `git status`, не делать reset --hard.
+- [ ] Применить полный защищённый Nginx vhost из шаблона (логирование/маскирование приглашений, безопасные headers, proxy_request_buffering off для DEV-05.2); проверить отдельные сайты не затронуты.
+- [ ] Проверить сертификат/редирект HTTP→HTTPS, PWA/push на устройствах, браузерный end-to-end тест, аудит 6 npm advisory (1 moderate/5 high при установке).
+- [ ] Backup DB + uploads и **тест восстановления**; защищённая периодическая автоматизация и безопасная процедура обновления (обновить все backend/client согласованно).
+
+**Не путать успешный запуск и готовность к production:** безопасность vhost, backup/restore, audit и функциональная приёмка остаются открытыми. Данные паролей/токенов в документацию не заносить.
+
 ## Стек
 - Backend: Node.js + TypeScript, Fastify
 - БД: PostgreSQL
