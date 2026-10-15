@@ -48,7 +48,7 @@ class DeploymentGuardTests(unittest.TestCase):
         self.assertIn('rsync -a --delete "$BACKUP/server-dist/"', SCRIPT)
         self.assertIn('rsync -a --delete --chmod=D755,F644 "$BACKUP/frontend/"', SCRIPT)
         self.assertIn("RECONCILE-BEFORE-NEXT-DEPLOY", SCRIPT)
-        self.assertIn("systemctl start lms || true", SCRIPT)
+        self.assertIn("if ! systemctl start lms", SCRIPT)
 
 
 if __name__ == "__main__":
