@@ -28,6 +28,8 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
+      - name: Validate approved deployment shell syntax
+        run: bash -n deploy/approved-deploy.sh
       - name: Build server and client (including PWA)
         run: npm run build
       - name: Check Nginx privacy configuration and actual logs
