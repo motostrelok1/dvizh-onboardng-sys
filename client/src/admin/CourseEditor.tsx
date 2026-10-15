@@ -24,6 +24,8 @@ export function CourseEditor({ courseId, onBack }: { courseId: string; onBack: (
   const [tree, setTree] = useState<Tree | null>(null);
   const [preview, setPreview] = useState(false);
   const [newModuleTitle, setNewModuleTitle] = useState("");
+  const [dragModuleId, setDragModuleId] = useState<string | null>(null);
+  const [reordering, setReordering] = useState(false);
 
   function reload() {
     api.get<Tree>(`/admin/courses/${courseId}/tree`).then(setTree);
@@ -59,6 +61,20 @@ export function CourseEditor({ courseId, onBack }: { courseId: string; onBack: (
     [ids[index], ids[target]] = [ids[target], ids[index]];
     await api.post("/admin/modules/reorder", { courseId, orderedIds: ids });
     reload();
+  }
+
+  async function dropModule(targetId: string) {
+    const sourceId = dragModuleId;
+    setDragModuleId(null);
+    if (!sourceId || sourceId === targetId || reordering) return;
+    const ids = modules.map((m) => m.id);
+    const source = ids.indexOf(sourceId), target = ids.indexOf(targetId);
+    if (source < 0 || target < 0) return;
+    ids.splice(target, 0, ids.splice(source, 1)[0]);
+    setReordering(true);
+    try { await api.post("/admin/modules/reorder", { courseId, orderedIds: ids }); reload(); }
+    catch { window.alert("Не удалось изменить порядок модулей."); }
+    finally { setReordering(false); }
   }
 
   return (
@@ -99,6 +115,10 @@ export function CourseEditor({ courseId, onBack }: { courseId: string; onBack: (
           onMove={(dir) => moveModule(i, dir)}
           onRemove={() => removeModule(m.id)}
           onReload={reload}
+          dragging={dragModuleId === m.id}
+          onDragStart={() => setDragModuleId(m.id)}
+          onDragEnd={() => setDragModuleId(null)}
+          onDrop={() => void dropModule(m.id)}
         />
       ))}
 
@@ -121,9 +141,17 @@ function ModuleBlock({
   isLast,
   onMove,
   onRemove,
-  onReload
+  onReload,
+  dragging,
+  onDragStart,
+  onDragEnd,
+  onDrop
 }: {
   module: Module;
+  dragging: boolean;
+  onDragStart: () => void;
+  onDragEnd: () => void;
+  onDrop: () => void;
   isFirst: boolean;
   isLast: boolean;
   onMove: (dir: -1 | 1) => void;
@@ -132,6 +160,22 @@ function ModuleBlock({
 }) {
   const [newLessonTitle, setNewLessonTitle] = useState("");
   const [expanded, setExpanded] = useState(true);
+  const [dragLessonId, setDragLessonId] = useState<string | null>(null);
+  const [reorderingLessons, setReorderingLessons] = useState(false);
+
+  async function dropLesson(targetId: string) {
+    const sourceId = dragLessonId;
+    setDragLessonId(null);
+    if (!sourceId || sourceId === targetId || reorderingLessons) return;
+    const ids = module.lessons.map((l) => l.id);
+    const source = ids.indexOf(sourceId), target = ids.indexOf(targetId);
+    if (source < 0 || target < 0) return;
+    ids.splice(target, 0, ids.splice(source, 1)[0]);
+    setReorderingLessons(true);
+    try { await api.post("/admin/lessons/reorder", { moduleId: module.id, orderedIds: ids }); onReload(); }
+    catch { window.alert("Не удалось изменить порядок уроков."); }
+    finally { setReorderingLessons(false); }
+  }
 
   async function addLesson(e: React.FormEvent) {
     e.preventDefault();
@@ -155,8 +199,9 @@ function ModuleBlock({
   }
 
   return (
-    <div className="lms-module-card lms-panel">
+    <div className={`lms-module-card lms-panel ${dragging ? "lms-dragging" : ""}`} onDragOver={(e) => { if (e.dataTransfer.types.includes("application/x-lms-module")) e.preventDefault(); }} onDrop={(e) => { if (e.dataTransfer.types.includes("application/x-lms-module")) { e.preventDefault(); e.stopPropagation(); onDrop(); } }}>
       <div className="lms-collapse-header">
+        <span draggable onDragStart={(e) => { e.dataTransfer.setData("application/x-lms-module", module.id); e.dataTransfer.effectAllowed = "move"; onDragStart(); }} onDragEnd={onDragEnd} className="lms-drag-handle" title="Перетащить модуль" aria-label="Перетащить модуль">⠿</span>
         <button type="button" className="lms-collapse-toggle" aria-expanded={expanded} aria-controls={`module-content-${module.id}`} onClick={() => setExpanded((v) => !v)}>{expanded ? "▾" : "▸"} {module.title} <span className="lms-collapse-count">({module.lessons.length} уроков)</span></button>
         <div>
           <button onClick={() => onMove(-1)} disabled={isFirst}>
@@ -184,6 +229,10 @@ function ModuleBlock({
             onMove={(dir) => moveLesson(i, dir)}
             onRemove={() => removeLesson(l.id)}
             onReload={onReload}
+            dragging={dragLessonId === l.id}
+            onDragStart={() => setDragLessonId(l.id)}
+            onDragEnd={() => setDragLessonId(null)}
+            onDrop={() => void dropLesson(l.id)}
           />
         ))}
 
@@ -208,9 +257,17 @@ function LessonBlock({
   isLast,
   onMove,
   onRemove,
-  onReload
+  onReload,
+  dragging,
+  onDragStart,
+  onDragEnd,
+  onDrop
 }: {
   lesson: Lesson;
+  dragging: boolean;
+  onDragStart: () => void;
+  onDragEnd: () => void;
+  onDrop: () => void;
   isFirst: boolean;
   isLast: boolean;
   onMove: (dir: -1 | 1) => void;
@@ -264,8 +321,9 @@ function LessonBlock({
   }
 
   return (
-    <div className="lms-lesson-card">
+    <div className={`lms-lesson-card ${dragging ? "lms-dragging" : ""}`} onDragOver={(e) => { if (e.dataTransfer.types.includes("application/x-lms-lesson")) e.preventDefault(); }} onDrop={(e) => { if (e.dataTransfer.types.includes("application/x-lms-lesson")) { e.preventDefault(); e.stopPropagation(); onDrop(); } }}>
       <div className="lms-collapse-header">
+        <span draggable onDragStart={(e) => { e.dataTransfer.setData("application/x-lms-lesson", lesson.id); e.dataTransfer.effectAllowed = "move"; onDragStart(); }} onDragEnd={onDragEnd} className="lms-drag-handle" title="Перетащить урок" aria-label="Перетащить урок">⠿</span>
         <button type="button" className="lms-collapse-toggle" aria-expanded={expanded} aria-controls={`lesson-content-${lesson.id}`} onClick={() => setExpanded((v) => !v)}>{expanded ? "▾" : "▸"} {title || "Без названия"}</button>
         <div>
           <button onClick={() => onMove(-1)} disabled={isFirst}>

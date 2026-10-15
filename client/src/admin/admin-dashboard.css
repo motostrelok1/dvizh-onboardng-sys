@@ -26,3 +26,5 @@
 
 /* Expand/collapse course editor sections without unmounting draft fields */
 .lms-collapse-header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.lms-collapse-toggle{border:0;background:transparent;color:#1e416e;font:inherit;font-weight:750;font-size:15px;cursor:pointer;text-align:left;padding:6px}.lms-collapse-toggle:hover{text-decoration:underline}.lms-collapse-toggle:focus-visible{outline:2px solid #3981e3;outline-offset:2px}.lms-collapse-count{font-size:12px;color:#78889e;font-weight:500}.lms-module-card [hidden],.lms-lesson-card [hidden]{display:none!important}
+
+.lms-drag-handle{cursor:grab;user-select:none;touch-action:none;font-size:21px;color:#7a8da9;padding:5px 7px;border-radius:7px}.lms-drag-handle:hover{background:#e8effb;color:#1e63bc}.lms-drag-handle:active{cursor:grabbing}.lms-dragging{opacity:.5;outline:2px dashed #4083de}.lms-collapse-header>.lms-collapse-toggle{flex:1}
