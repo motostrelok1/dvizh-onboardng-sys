@@ -73,7 +73,7 @@ process.once("SIGINT", close);
 process.once("SIGTERM", close);
 
 try {
-  await app.listen({ port, host: "0.0.0.0" });
+  await app.listen({ port, host: "127.0.0.1" });
   schedulers.push(startDeadlineChecker(), startReportScheduler(), startNotificationScheduler(), startAttachmentCleanupScheduler());
 } catch (err) {
   app.log.error(err);
