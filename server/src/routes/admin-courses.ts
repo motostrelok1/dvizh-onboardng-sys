@@ -3,6 +3,7 @@ import { pool } from "../db.js";
 import { requireAdmin } from "../auth/middleware.js";
 import { installApiValidation, schema, object, text, uuid, idParams } from "../api-validation.js";
 import { withTransaction, lockOrderingParent, nextPosition, reorderChildren } from "../data-integrity.js";
+import { validateLessonBlocks } from "../lesson-blocks.js";
 
 const orderIds = { type: "array", items: uuid, uniqueItems: true, maxItems: 10000 };
 
@@ -191,6 +192,39 @@ export async function adminCourseRoutes(app: FastifyInstance) {
       [req.params.id, title, textContent, videoProvider, videoRef]
     );
     return { lesson: res.rows[0] };
+  });
+
+  // BN-02: optimistic revision check avoids silent overwrites by concurrent admins.
+  // Existing plain text editor can continue using the legacy PATCH route.
+  app.patch<{
+    Params: { id: string };
+    Body: { contentBlocks: unknown; expectedRevision: number };
+  }>("/admin/lessons/:id/blocks", async (req, reply) => {
+    const body = req.body;
+    if (!body || !Number.isSafeInteger(body.expectedRevision) ||
+        body.expectedRevision < 0 || !validateLessonBlocks(body.contentBlocks)) {
+      reply.code(400);
+      return { error: "invalid_lesson_content" };
+    }
+    const json = JSON.stringify(body.contentBlocks);
+    if (Buffer.byteLength(json, "utf8") > 250_000) {
+      reply.code(413);
+      return { error: "lesson_content_too_large" };
+    }
+    const result = await pool.query(
+      `update lessons set content_blocks = $2::jsonb,
+          content_revision = content_revision + 1
+       where id = $1 and content_revision = $3
+       returning id, content_revision, content_blocks`,
+      [req.params.id, json, body.expectedRevision]
+    );
+    if (!result.rowCount) {
+      const exists = await pool.query("select 1 from lessons where id = $1", [req.params.id]);
+      reply.code(exists.rowCount ? 409 : 404);
+      return { error: exists.rowCount ? "content_revision_conflict" : "lesson_not_found" };
+    }
+    return { contentBlocks: result.rows[0].content_blocks,
+      contentRevision: result.rows[0].content_revision };
   });
 
   app.delete<{ Params: { id: string } }>("/admin/lessons/:id", async (req) => {
