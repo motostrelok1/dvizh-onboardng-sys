@@ -32,6 +32,7 @@ export function GroupsTab() {
   }
 
   async function remove(id: string) {
+    if (!window.confirm("Удалить группу?")) return;
     await api.delete(`/admin/groups/${id}`);
     if (openGroupId === id) setOpenGroupId(null);
     reloadGroups();
@@ -61,13 +62,15 @@ export function GroupsTab() {
   }
 
   return (
-    <div style={{ display: "flex", gap: 32 }}>
-      <div style={{ flex: 1 }}>
-        <form onSubmit={create} style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+    <section className="lms-admin-list-page">
+      <div className="lms-dashboard-heading"><div><h2>Группы</h2><p>Состав учебных групп и управление участниками</p></div></div>
+      <div className="lms-management-columns">
+      <div className="lms-panel">
+        <h3>Создать группу</h3><form onSubmit={create} className="lms-course-create-row">
           <input placeholder="Название группы" value={name} onChange={(e) => setName(e.target.value)} required />
           <button type="submit">Добавить</button>
         </form>
-        <ul>
+        <ul className="lms-management-list">
           {groups.map((g) => (
             <li key={g.id} style={{ marginBottom: 6 }}>
               <button onClick={() => openGroup(g.id)} style={{ fontWeight: openGroupId === g.id ? 700 : 400 }}>
@@ -82,7 +85,7 @@ export function GroupsTab() {
       </div>
 
       {openGroupId && (
-        <div style={{ flex: 1 }}>
+        <div className="lms-panel">
           <h3>Участники</h3>
           {employees.map((e) => (
             <label key={e.id} style={{ display: "block" }}>
@@ -99,6 +102,7 @@ export function GroupsTab() {
           </button>
         </div>
       )}
-    </div>
+      </div>
+    </section>
   );
 }
