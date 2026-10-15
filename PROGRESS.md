@@ -711,3 +711,15 @@ DEV-10.1, DEV-05.1 и DEV-05.2 выполнены; проверено 399/399 в
   Проверенный запуск: https://github.com/motostrelok1/dvizh-onboardng-sys/actions/runs/38236073041
 - PR #17. Новых миграций нет; VDS/рабочая БД не менялись. Полный DEV-07
   (outbox, новые idempotency keys, retry/backoff/мониторинг) остаётся открыт.
+
+## Новая задача: BlockNote — 2026-10-15
+
+- [x] BN-00: решение по редактору принято — BlockNote, self-hosted, бесплатная open-source основа.
+- [x] BN-00.1: создана полная спецификация `docs/BLOCKNOTE-SPEC.md` и разбивка на этапы.
+- [ ] BN-01: оценка и установка зависимостей, совместимость React 18, license/security и lockfile rollout.
+- [ ] BN-02: JSONB/API/валидация и сохранение текстов старых уроков; миграция только вручную.
+- [ ] BN-03: сам редактор BlockNote + русский UX.
+- [ ] BN-04: единый безопасный read-only renderer в кабинете сотрудника и preview.
+- [ ] BN-05: загрузка фотографий, эмодзи и безопасное media-хранилище.
+- [ ] BN-06: учебные блоки, авто-сохранение, мобильная доступность.
+- [ ] BN-07: E2E и приёмка. Подробнее: [docs/BLOCKNOTE-SPEC.md](docs/BLOCKNOTE-SPEC.md).
