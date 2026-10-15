@@ -1,0 +1,36 @@
+name: Verify LMS SSH (manual)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    environment: production
+    timeout-minutes: 5
+    steps:
+      - name: Set up trusted SSH
+        env:
+          KEY: ${{ secrets.LMS_DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.LMS_DEPLOY_KNOWN_HOSTS }}
+        run: |
+          test -n "$KEY" && test -n "$KNOWN_HOSTS"
+          mkdir -p -m 700 ~/.ssh
+          printf '%s\n' "$KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+      - name: Verify SSH identity only (no deployment)
+        env:
+          HOST: ${{ secrets.LMS_DEPLOY_HOST }}
+          USER: ${{ secrets.LMS_DEPLOY_USER }}
+        run: |
+          test -n "$HOST" && test -n "$USER"
+          test "$USER" = "lms-deploy"
+          actual="$(ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=15 "$USER@$HOST" 'whoami')"
+          test "$actual" = "lms-deploy"
+          echo "SSH verification passed"
