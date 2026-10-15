@@ -47,7 +47,7 @@ beforeEach(async () => {
   await pool.query("insert into courses (id,title,status) values ($1,'BN course','published')", [course]);
   await pool.query("insert into modules (id,course_id,title) values ($1,$2,'BN Module')",
     [moduleId, course]);
-  await pool.query("insert into lessons (id,module_id,title,text_content) values ($1,$2,'BN Lesson','Legacy text'),($3,$2,'Other','Other text')",
+  await pool.query("insert into lessons (id,module_id,title,text_content,position) values ($1,$2,'BN Lesson','Legacy text',0),($3,$2,'Other','Other text',1)",
     [lesson, moduleId, otherLesson]);
   await pool.query("insert into assignments (user_id,course_id,assigned_by) values ($1,$2,$3)",
     [employee, course, admin]);
