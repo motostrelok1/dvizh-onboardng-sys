@@ -1,4 +1,8 @@
-# Manual production deployment: setup checklist (NOT LIVE)
+# Manual production deployment — действующая конфигурация и история настройки
+
+**Актуально 2026-10-15:** PR #38 слит, скрипт установлен на VDS от root, проверка SSH PR #39 прошла, ручной деплой и автоматический деплой после CI (PR #41) реально выполнены. Подробности: [AUTOMATIC-DEPLOY.md](AUTOMATIC-DEPLOY.md). Инструкции ниже — исторический чек-лист начальной настройки, а не незавершённая задача.
+
+## Архив первоначальной настройки
 
 This workflow is a **draft**. Do not merge or enable it until the server-side script has
 been tested on an isolated copy and its rollback / permissions issues are resolved.
