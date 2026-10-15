@@ -65,6 +65,8 @@ test -s "$BACKUP/server-dist/index.js"
 git merge --ff-only "$TARGET"
 npm ci
 npm run build
+# Restore read/traverse access after building with a restrictive root umask.
+chmod -R a+rX "$APP/node_modules" "$APP/server/dist"
 test -s "$APP/client/dist/index.html"
 test -s "$APP/server/dist/index.js"
 rsync -a --delete --chmod=D755,F644 "$APP/client/dist/" "$WEB/"
