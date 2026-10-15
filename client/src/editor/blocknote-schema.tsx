@@ -1,4 +1,4 @@
-import { BlockNoteSchema, defaultProps } from "@blocknote/core";
+import { BlockNoteSchema, defaultBlockSpecs, defaultProps } from "@blocknote/core";
 import { createReactBlockSpec } from "@blocknote/react";
 
 export const calloutChoices = [
@@ -37,6 +37,18 @@ const createCallout = createReactBlockSpec(
   }
 );
 
-export const lessonBlockSchema = BlockNoteSchema.create().extend({
-  blockSpecs: { callout: createCallout() }
+export const lessonBlockSchema = BlockNoteSchema.create({
+  blockSpecs: {
+    paragraph: defaultBlockSpecs.paragraph,
+    heading: defaultBlockSpecs.heading,
+    bulletListItem: defaultBlockSpecs.bulletListItem,
+    numberedListItem: defaultBlockSpecs.numberedListItem,
+    checkListItem: defaultBlockSpecs.checkListItem,
+    toggleListItem: defaultBlockSpecs.toggleListItem,
+    quote: defaultBlockSpecs.quote,
+    codeBlock: defaultBlockSpecs.codeBlock,
+    table: defaultBlockSpecs.table,
+    image: defaultBlockSpecs.image,
+    callout: createCallout()
+  }
 });
