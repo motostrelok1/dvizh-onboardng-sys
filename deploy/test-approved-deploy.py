@@ -41,7 +41,7 @@ class DeploymentGuardTests(unittest.TestCase):
         self.assertLess(SCRIPT.index("systemctl stop lms"), SCRIPT.index("pg_dump -Fc"))
         self.assertLess(SCRIPT.index("pg_dump -Fc"), SCRIPT.index('git merge --ff-only "$TARGET"'))
         self.assertLess(SCRIPT.index('rsync -a "$WEB/" "$BACKUP/frontend/"'),
-                        SCRIPT.index('rsync -a --delete --chmod=D755,F644 "$APP/client/dist/" "$WEB/"'))
+                        SCRIPT.index('rsync -a --checksum --delete --chmod=D755,F644 "$APP/client/dist/" "$WEB/"'))
 
     def test_failed_deploy_recovers_and_blocks_retries(self):
         self.assertIn('trap rollback ERR', SCRIPT)
