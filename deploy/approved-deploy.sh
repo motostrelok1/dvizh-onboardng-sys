@@ -31,7 +31,7 @@ for cmd in pg_dump pg_restore tar rsync curl git npm systemctl; do command -v "$
 systemctl is-active --quiet lms || { echo "LMS not active before deployment" >&2; exit 1; }
 mkdir -p "$BACKUPS"
 chmod 700 "$BACKUPS"
-BACKUP="$BACKUPS/action-$(date -u +%Y%m%dT%H%M%SZ)"
+BACKUP="$BACKUPS/action-$(date -u +%Y%m%dT%H%M%SZ)-$"
 mkdir -m 700 "$BACKUP"
 echo "Backup: $BACKUP; old commit: $FROM"
 stopped=0
