@@ -80,14 +80,50 @@ async function assertLessonDirectories(lessonId: string) {
 
 export async function ensureLessonDir(lessonId: string): Promise<string> {
   const lessonDir = lessonDirectory(lessonId); // validate before any mkdir
+  const root = await ensureUploadRoot();
+  await mkdirPrivate(lessonDir);
+  await assertDirectory(lessonDir, join(root, "lessons", lessonId.toLowerCase()));
+  return lessonDir;
+}
+
+export async function ensureUploadRoot(): Promise<string> {
   await mkdirPrivate(UPLOAD_DIR, true);
   const root = await assertDirectory(UPLOAD_DIR);
   const lessonsDir = join(UPLOAD_DIR, "lessons");
   await mkdirPrivate(lessonsDir);
   await assertDirectory(lessonsDir, join(root, "lessons"));
-  await mkdirPrivate(lessonDir);
-  await assertDirectory(lessonDir, join(root, "lessons", lessonId.toLowerCase()));
-  return lessonDir;
+  return root;
+}
+
+export async function checkedUploadRoot(): Promise<string> {
+  const root = await assertDirectory(UPLOAD_DIR);
+  await assertDirectory(join(UPLOAD_DIR, "lessons"), join(root, "lessons"));
+  return root;
+}
+
+// Admission must be read-only: malformed MIME/extension must not mkdir uploads.
+// A new root will be created on its nearest existing parent's filesystem only
+// after the receiver has accepted the file extension. Canonical identity stays
+// the same before and after that mkdir, including configured ancestor aliases.
+export async function inspectUploadRoot(): Promise<{ root: string; probe: string }> {
+  let probe = UPLOAD_DIR;
+  while (true) {
+    try {
+      const stat = await lstat(probe);
+      if (probe === UPLOAD_DIR && (!stat.isDirectory() || stat.isSymbolicLink())) throw new StoragePathError();
+      const actual = await realpath(probe);
+      if (!(await lstat(actual)).isDirectory()) throw new StoragePathError();
+      const root = resolve(actual,relative(probe,UPLOAD_DIR));
+      if (probe === UPLOAD_DIR) {
+        try { await assertDirectory(join(UPLOAD_DIR,"lessons"),join(root,"lessons")); }
+        catch (error: any) { if (error.code !== "ENOENT") throw error; }
+      }
+      return { root, probe: actual };
+    } catch (error: any) {
+      if (error.code !== "ENOENT" || dirname(probe) === probe) throw error;
+      probe = dirname(probe);
+    }
+  }
 }
 
 export async function openNewAttachment(lessonId: string, storedName: string) {

@@ -200,7 +200,17 @@ for (const kind of ["modules", "lessons", "questions"]) {
 }
 
 test("parallel attachment uploads keep unique positions and each complete published file", async () => {
-  const responses = await Promise.all(Array.from({ length: 3 }, upload));
+  const responses = await Promise.all(Array.from({ length: 3 }, async () => {
+    const deadline = Date.now() + 5000;
+    while (true) {
+      const response = await upload();
+      if (response.statusCode !== 429) return response;
+      assert.equal(response.json().error,"upload_busy");
+      assert.equal(response.headers["retry-after"],"5");
+      assert.ok(Date.now() < deadline,"capacity permit did not become available");
+      await new Promise(resolve=>setTimeout(resolve,25));
+    }
+  }));
   assert.ok(responses.every(r => r.statusCode === 201), responses.map(r => r.body).join("\n"));
   const current = await ordered("lesson_attachments", lessons[0]);
   assert.deepEqual(current.map(r => r.position), [0, 1, 2, 3]);

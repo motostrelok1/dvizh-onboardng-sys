@@ -4,6 +4,7 @@ No external requests, privileged ports, real files or production credentials.
 TLS is removed ONLY in this generated test config. CI installs stock Nginx.
 """
 import http.server
+import http.client
 import pathlib
 import socket
 import subprocess
@@ -25,6 +26,12 @@ secret = "CI_INVITATION_SECRET_never_log_this"
 
 class Upstream(http.server.BaseHTTPRequestHandler):
     def do_POST(self):
+        if self.path.endswith("/attachments"):
+            # Deliberately reject before consuming a large announced body.
+            self.send_response(429)
+            self.end_headers()
+            self.wfile.write(b'{"error":"upload_busy"}')
+            return
         body = self.rfile.read(int(self.headers.get("Content-Length", "0")))
         assert secret.encode() in body
         self.send_response(200)
@@ -96,6 +103,24 @@ with tempfile.TemporaryDirectory(prefix="lms-nginx-test-") as directory:
         for action in ["check", "accept"]:
             request(f"/api/auth/invitations/{action}", 200,
                     f'{{"token":"{secret}","password":"{secret}"}}'.encode())
+        # A partial 1 MiB upload must reach the upstream and return 429 now,
+        # without sending/buffering the remaining body. Stock Nginx's default
+        # request buffering would wait here until the client sends all bytes.
+        connection = http.client.HTTPConnection("127.0.0.1", port, timeout=3)
+        try:
+            connection.putrequest("POST", "/api/admin/lessons/11111111-1111-1111-1111-111111111111/attachments")
+            connection.putheader("Content-Length", "1048576")
+            connection.putheader("Content-Type", "application/octet-stream")
+            connection.putheader("Referer", f"/invite/{secret}")
+            connection.endheaders()
+            connection.send(secret.encode())
+            response = connection.getresponse()
+            assert response.status == 429
+            assert response.headers.get("Cache-Control") == "no-store"
+            assert response.headers.get("Referrer-Policy") == "no-referrer"
+            response.read()
+        finally:
+            connection.close()
         # An upstream failure must remain private and cannot log a body token.
         upstream.shutdown()
         upstream.server_close()

@@ -1,6 +1,6 @@
 # Пример конфигурации Nginx для поддомена edu.ваш-домен.ru (SPEC §11).
 # Nginx отдаёт статику клиента из dist и проксирует /api/ на Node
-# (Fastify слушает 127.0.0.1:3000, см. server/.env PORT).
+# (Fastify слушает 0.0.0.0:PORT; proxy обращается к loopback, см. DEPLOY.md).
 #
 # Установка: скопировать в /etc/nginx/sites-available/edu.example.ru,
 # заменить example.ru на реальный домен и пути, затем:
@@ -95,6 +95,9 @@ server {
         add_header Referrer-Policy "no-referrer" always;
         proxy_pass http://127.0.0.1:3000/;
         proxy_http_version 1.1;
+        # Let Node reject busy/low-space uploads before Nginx buffers the full
+        # request into a temporary file. Keep HTTP/1.1 for chunked forwarding.
+        proxy_request_buffering off;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;

@@ -1,7 +1,7 @@
 # Серверные проверки
 
 `npm test` из корня запускает настоящий Node test runner + tsx. Все SQL/API
-проверки используют Fastify inject, production-модули маршрутов и отдельную
+проверки используют Fastify inject (потоковый abort/partial write также проверяется настоящим локальным HTTP), production-модули маршрутов и отдельную
 мигрированную PostgreSQL. index.ts не импортируется: HTTP listener и таймеры
 не стартуют автоматически. Имитации используются для контролируемого сбоя
 или остановки запроса; SQL и проверки транзакций выполняются настоящей БД.
@@ -11,6 +11,7 @@
 | Вход, приглашения, сессии, роли | auth.integration, auth-recovery.integration, auth-rate-limit.integration | 401/403, отключение, expiry/revocation, атомарность, лимиты, конкуренция |
 | Приватность и API | api-validation, csrf, privacy, health (+ integration) | строгие схемы, safe errors/DTO, Origin, no-store, приватные логи |
 | Файлы | storage, file-content, attachments.integration, upload-staging, upload-receiver, upload-reliability.integration | структура/пути, symlink/коллизии, multipart/обрыв, rollback/COMMIT ambiguity |
+| Ресурсы загрузки | upload-capacity (+ integration), upload-receiver, upload-root-probe | shared PG slots, statfs/budget, busy/full/abort/timeout/drain/session loss; настоящий chunked HTTP/partial cleanup |
 | Удаление файлов | attachment-cleanup (+ integration) | transactional cascade/rollback, durable retry/ENOENT, live paths, unsafe/symlink/missing root, locks/batch/drain/migration |
 | Дедлайны и доступ | deadlines.integration | время БД, completed/overdue, перенос, чужая попытка, job event |
 | Контент/назначения | data-integrity.integration, content-integrity-migration.integration, patch.integration | parent/position locks, constraints/cascade, атомарные assignments, PATCH missing/null |
@@ -48,7 +49,7 @@ localhost/127.0.0.1/IPv6 loopback и postgres/postgresql. Проверки чи�
 
 Actions запускается на PR, main и вручную. Jobs сохраняют прежние имена:
 `Server and client build`, `PostgreSQL and auth tests`. Первая собирает оба
-workspace/PWA и проверяет настоящий Nginx. Вторая применяет все миграции,
+workspace/PWA и проверяет настоящий Nginx, включая отказ upload до полного body. Вторая применяет все миграции,
 повторяет migrate и оба read-only preflight, затем выполняет `test:ci`.
 
 `npm run test:ci --workspace server` выдаёт spec-лог и

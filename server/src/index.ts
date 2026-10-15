@@ -28,6 +28,7 @@ import { startDeadlineChecker } from "./jobs/deadlines.js";
 import { startAttachmentCleanupScheduler } from "./jobs/attachment-cleanup.js";
 
 import { pool } from "./db.js";
+import { uploadCapacity } from "./upload-capacity.js";
 import { jobRunner } from "./jobs/runner.js";
 import type { Scheduler } from "./jobs/scheduler.js";
 import { drainJobs } from "./jobs/shutdown.js";
@@ -61,10 +62,10 @@ await app.register(healthRoutes);
 const port = Number(process.env.PORT ?? 3000);
 
 const schedulers: Scheduler[] = [];
-app.addHook("onClose", async () => drainJobs(schedulers, jobRunner, pool));
+app.addHook("onClose", async () => { await uploadCapacity.stop(); await drainJobs(schedulers, jobRunner, pool); });
 let closing: Promise<void> | undefined;
 const close = () => {
-  closing ??= app.close().catch(() => {
+  closing ??= Promise.all([uploadCapacity.stop(), app.close()]).then(() => {}).catch(() => {
     app.log.error({ event: "shutdown_failed" }, "shutdown_failed");
     process.exitCode = 1;
   });
