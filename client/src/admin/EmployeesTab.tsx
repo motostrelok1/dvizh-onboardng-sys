@@ -26,6 +26,8 @@ export function EmployeesTab() {
   const issuing = useRef(false);
   const [issuingId, setIssuingId] = useState<string | null>(null);
   const [inviteError, setInviteError] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState("");
 
   function reload() {
     api.get<{ users: Employee[] }>("/admin/users").then((d) => setUsers(d.users));
@@ -38,15 +40,22 @@ export function EmployeesTab() {
 
   async function createEmployee(e: React.FormEvent) {
     e.preventDefault();
-    await api.post("/admin/users", {
+    if (creating) return;
+    setCreating(true);
+    setCreateError("");
+    try {
+      await api.post("/admin/users", {
       fullName,
       email,
       departmentId: departmentId || undefined,
       timezone
     });
-    setFullName("");
-    setEmail("");
-    reload();
+      setFullName("");
+      setEmail("");
+      reload();
+    } catch {
+      setCreateError("Не удалось добавить сотрудника. Проверьте данные и попробуйте снова.");
+    } finally { setCreating(false); }
   }
 
   async function issueInvitation(id: string) {
@@ -83,70 +92,34 @@ export function EmployeesTab() {
   }
 
   return (
-    <div>
-      <form onSubmit={createEmployee} style={{ marginBottom: 20, display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <input placeholder="ФИО" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
-        <input placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-        <select value={departmentId} onChange={(e) => setDepartmentId(e.target.value)}>
-          <option value="">Без отдела</option>
-          {departments.map((d) => (
-            <option key={d.id} value={d.id}>
-              {d.name}
-            </option>
-          ))}
-        </select>
-        <input
-          placeholder="Часовой пояс (IANA)"
-          value={timezone}
-          onChange={(e) => setTimezone(e.target.value)}
-        />
-        <button type="submit">Добавить сотрудника</button>
-      </form>
-
-      <p>Новая ссылка отменяет предыдущие. После установки пароля сотрудник выйдет из остальных сессий.</p>
-      {inviteError && <p role="alert" style={{ color: "crimson" }}>{inviteError}</p>}
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
-        <thead>
-          <tr style={{ textAlign: "left", borderBottom: "1px solid #ccc" }}>
-            <th>ФИО</th>
-            <th>Email</th>
-            <th>Отдел</th>
-            <th>Пояс</th>
-            <th>Активен</th>
-            <th>Приглашение</th>
-          </tr>
-        </thead>
-        <tbody>
-          {users.map((u) => (
-            <tr key={u.id} style={{ borderBottom: "1px solid #eee" }}>
-              <td>{u.full_name}</td>
-              <td>{u.email}</td>
-              <td>{u.department_name ?? "—"}</td>
-              <td>{u.timezone}</td>
-              <td>{u.is_active ? "да" : "нет"}</td>
-              <td>
-                {u.role === "employee" && (
-                  <>
-                    <button disabled={!u.is_active || issuingId !== null}
-                      title={!u.is_active ? "Учётная запись отключена" : undefined}
-                      onClick={() => issueInvitation(u.id)}>
-                      {issuingId === u.id ? "Выпускаем…" : "Выпустить ссылку"}
-                    </button>
-                    {inviteLinks[u.id] && (
-                      <div style={{ marginTop: 4 }}>
-                        <div style={{ fontSize: 12, wordBreak: "break-all" }}>{inviteLinks[u.id]}</div>
-                        <button type="button" onClick={() => copyLink(u.id, inviteLinks[u.id])}>
-                          {copiedFor === u.id ? "Скопировано" : "Копировать"}
-                        </button>
-                      </div>
-                    )}
-                  </>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <section className="lms-admin-list-page">
+      <div className="lms-dashboard-heading"><div><h2>Сотрудники</h2><p>Учётные записи, отделы и приглашения в LMS</p></div></div>
+      <div className="lms-panel">
+        <div className="lms-panel-head"><h3>Добавить сотрудника</h3></div>
+        <form onSubmit={createEmployee} className="lms-admin-form">
+          <label>ФИО<input placeholder="Иванов Иван" value={fullName} onChange={(e) => setFullName(e.target.value)} required disabled={creating}/></label>
+          <label>Email<input type="email" placeholder="user@example.ru" value={email} onChange={(e) => setEmail(e.target.value)} required disabled={creating}/></label>
+          <label>Отдел<select value={departmentId} onChange={(e) => setDepartmentId(e.target.value)}><option value="">Без отдела</option>{departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</select></label>
+          <label>Часовой пояс (IANA)<input value={timezone} onChange={(e) => setTimezone(e.target.value)} required /></label>
+          <button type="submit" className="lms-primary-btn" disabled={creating}>{creating ? "Добавляем…" : "+ Добавить сотрудника"}</button>
+        </form>
+        {createError && <p role="alert" className="lms-form-error">{createError}</p>}
+      </div>
+      <div className="lms-panel">
+        <div className="lms-panel-head"><h3>Список сотрудников</h3><span>Всего: {users.length}</span></div>
+        <p className="lms-info-note">Новая ссылка отменяет предыдущую. После установки пароля сотрудник выйдет из остальных сессий.</p>
+        {inviteError && <p role="alert" className="lms-form-error">{inviteError}</p>}
+        {users.length === 0 ? <div className="lms-empty"><strong>Сотрудников пока нет</strong>Добавьте первого сотрудника с помощью формы выше.</div> :
+        <div className="lms-table-scroll"><table className="lms-table">
+          <thead><tr><th>ФИО</th><th>Email</th><th>Отдел</th><th>Пояс</th><th>Статус</th><th>Приглашение</th></tr></thead>
+          <tbody>{users.map(u => <tr key={u.id}>
+            <td className="lms-employee-name">{u.full_name}</td><td>{u.email}</td><td>{u.department_name ?? "—"}</td><td>{u.timezone}</td>
+            <td><span className={`lms-status ${u.is_active ? "lms-status-published" : "lms-status-archived"}`}>{u.is_active ? "Активен" : "Отключён"}</span></td>
+            <td>{u.role === "employee" && <><button type="button" className="lms-card-btn" disabled={!u.is_active || issuingId !== null} title={!u.is_active ? "Учётная запись отключена" : undefined} onClick={() => issueInvitation(u.id)}>{issuingId === u.id ? "Выпускаем…" : "Выпустить ссылку"}</button>
+              {inviteLinks[u.id] && <div className="lms-invitation-link"><div>{inviteLinks[u.id]}</div><button type="button" className="lms-card-btn" onClick={() => copyLink(u.id, inviteLinks[u.id])}>{copiedFor === u.id ? "Скопировано" : "Копировать"}</button></div>}</>}</td>
+          </tr>)}</tbody>
+        </table></div>}
+      </div>
+    </section>
   );
 }
