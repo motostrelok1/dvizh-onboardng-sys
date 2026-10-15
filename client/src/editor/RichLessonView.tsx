@@ -1,3 +1,4 @@
+import { ru } from "@blocknote/core/locales";
 import type { PartialBlock } from "@blocknote/core";
 import { BlockNoteView } from "@blocknote/mantine";
 import { useCreateBlockNote } from "@blocknote/react";
@@ -14,6 +15,7 @@ export function RichLessonView({ contentBlocks, textContent }: {
 }) {
   const initialContent = contentBlocks?.length ? contentBlocks : legacyTextToBlocks(textContent);
   const editor = useCreateBlockNote({
+    dictionary: ru,
     schema: lessonBlockSchema,
     initialContent: initialContent as any
   });
