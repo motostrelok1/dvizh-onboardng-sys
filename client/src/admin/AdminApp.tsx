@@ -52,7 +52,7 @@ export default function AdminApp() {
           <div className="lms-user-controls"><span>{"Администратор"}</span><button className="lms-logout" onClick={() => api.post("/auth/logout").then(() => setUser(null))}>Выйти</button></div>
         </header>
         <div className="lms-content">
-          {tab === "dashboard" && <DashboardTab />}
+          {tab === "dashboard" && <DashboardTab onAddEmployee={() => setTab("employees")} />}
           {tab === "courses" && <CoursesTab />}
           {tab === "assignments" && <AssignmentsTab />}
           {tab === "reports" && <ReportsTab />}
