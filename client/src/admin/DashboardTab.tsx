@@ -22,7 +22,7 @@ type Summary = {
   flaggedEmployeesCount: number;
 };
 
-export function DashboardTab() {
+export function DashboardTab({ onAddEmployee }: { onAddEmployee: () => void }) {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [departmentId, setDepartmentId] = useState("");
@@ -69,17 +69,17 @@ export function DashboardTab() {
       </div>
       {summary ? (
         <div className="lms-stats">
-          <Tile label="Всего сотрудников" value={summary.totalEmployees} />
-          <Tile label="Активных за 7 дней" value={summary.activeEmployees} />
-          <Tile label="Средний прогресс" value={summary.averageProgressPercent !== null ? `${summary.averageProgressPercent}%` : "—"} />
-          <Tile label="Просроченные назначения" value={summary.overdueAssignmentsCount} alert={summary.overdueAssignmentsCount > 0} />
-          <Tile label="Требуют внимания" value={summary.flaggedEmployeesCount} alert={summary.flaggedEmployeesCount > 0} />
+          <Tile icon="♙" label="Всего сотрудников" value={summary.totalEmployees} />
+          <Tile icon="◉" label="Активных за 7 дней" value={summary.activeEmployees} />
+          <Tile icon="◔" label="Средний прогресс" value={summary.averageProgressPercent !== null ? `${summary.averageProgressPercent}%` : "—"} />
+          <Tile icon="◷" label="Просроченные назначения" value={summary.overdueAssignmentsCount} alert={summary.overdueAssignmentsCount > 0} />
+          <Tile icon="⚑" label="Требуют внимания" value={summary.flaggedEmployeesCount} alert={summary.flaggedEmployeesCount > 0} />
         </div>
       ) : <div className="lms-panel">Загрузка показателей…</div>}
       <section className="lms-panel">
         <div className="lms-panel-head"><h3>Сотрудники</h3><span>Найдено: {employees.length}</span></div>
         {employees.length === 0 ? (
-          <div className="lms-empty"><strong>Сотрудников пока нет</strong>Добавьте сотрудников или измените фильтры, чтобы увидеть результаты.</div>
+          <div className="lms-empty"><strong>Сотрудников пока нет</strong>Добавьте сотрудников или измените фильтры, чтобы увидеть результаты.<div className="lms-empty-actions"><button type="button" className="lms-primary-btn" onClick={onAddEmployee}>Добавить сотрудника</button></div></div>
         ) : (
           <div className="lms-table-scroll">
             <table className="lms-table">
@@ -104,6 +104,6 @@ export function DashboardTab() {
   );
 }
 
-function Tile({ label, value, alert }: { label: string; value: string | number; alert?: boolean }) {
-  return <div className={`lms-stat${alert ? " lms-stat-warning" : ""}`}><div className="lms-stat-label">{label}</div><div className="lms-stat-value">{value}</div><div className="lms-stat-accent" /></div>;
+function Tile({ icon, label, value, alert }: { icon: string; label: string; value: string | number; alert?: boolean }) {
+  return <div className={`lms-stat${alert ? " lms-stat-warning" : ""}`}><div className="lms-stat-top"><div className="lms-stat-label">{label}</div><span className="lms-stat-icon" aria-hidden="true">{icon}</span></div><div className="lms-stat-value">{value}</div><div className="lms-stat-accent" /></div>;
 }
