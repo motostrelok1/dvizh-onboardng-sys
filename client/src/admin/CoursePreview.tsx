@@ -35,8 +35,8 @@ export function CoursePreview({ courseId, onBack }: { courseId: string; onBack: 
         {module.lessons.map((lesson, i) => <article key={lesson.id} className="lms-preview-lesson">
           <h4>Урок {i + 1}. {lesson.title}</h4>
           {lesson.text_content && <p className="lms-preview-text">{lesson.text_content}</p>}
-          {lesson.video_provider && lesson.video_ref && <p className="lms-preview-meta">Видео: {lesson.video_provider} — {lesson.video_ref}</p>}
-          {lesson.attachments.length > 0 && <div><strong>Материалы</strong><ul>{lesson.attachments.map((file) => <li key={file.id}>{file.file_name} ({Math.ceil(file.size_bytes / 1024)} КБ)</li>)}</ul></div>}
+          {lesson.video_provider && lesson.video_ref && <PreviewVideo provider={lesson.video_provider} videoRef={lesson.video_ref} />}
+          {lesson.attachments.length > 0 && <div><strong>Материалы</strong><ul>{lesson.attachments.map((file) => <li key={file.id}><a href={`/api/admin/attachments/${file.id}/preview`} download>{file.file_name}</a> ({Math.ceil(file.size_bytes / 1024)} КБ)</li>)}</ul></div>}
           {lesson.test && <button className="lms-primary-btn" onClick={() => setActiveTest(lesson.test!.id)}>Пройти демонстрационный тест урока</button>}
         </article>)}
         {module.test && <button className="lms-primary-btn" onClick={() => setActiveTest(module.test!.id)}>Пройти демонстрационный тест модуля</button>}
@@ -90,4 +90,19 @@ function DemoTest({ testId, onBack }: { testId: string; onBack: () => void }) {
       {finished && <button type="button" className="lms-card-btn" onClick={() => { setSelected({}); setFinished(false); }}>Пройти ещё раз</button>}
     </>}
   </section>;
+}
+
+// Mirror the employee's currently supported players without recording lesson events.
+function PreviewVideo({ provider, videoRef }: { provider: string; videoRef: string }) {
+  if (provider === "vimeo" && /^\\d+$/.test(videoRef)) return <div className="lms-preview-video">
+    <iframe title="Видео урока" src={`https://player.vimeo.com/video/${videoRef}`} allow="autoplay; fullscreen; picture-in-picture" allowFullScreen />
+  </div>;
+  if (provider === "self_hosted") {
+    try {
+      const url = new URL(videoRef, window.location.origin);
+      if (url.protocol !== "https:" && url.origin !== window.location.origin) throw new Error("invalid");
+      return <video className="lms-preview-video" controls preload="metadata"><source src={url.href} /></video>;
+    } catch { /* Invalid URL: show a readable fallback instead of embedding it. */ }
+  }
+  return <p className="lms-preview-meta">Видео ({provider}): {videoRef}. Для этого источника встроенный плеер пока не поддерживается.</p>;
 }
