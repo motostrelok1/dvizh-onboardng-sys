@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { api } from "../admin/api";
 import { enqueueEvent } from "../events";
 import type { PartialBlock } from "@blocknote/core";
-import { RichLessonView } from "../editor/RichLessonView";
+const RichLessonView = lazy(() => import("../editor/RichLessonView").then(m => ({ default: m.RichLessonView })));
 
 type Lesson = {
   id: string;
@@ -65,7 +65,7 @@ export function LessonScreen({ lessonId, onBack }: { lessonId: string; onBack: (
           <VideoPlayer provider={data.lesson.videoProvider} videoRef={data.lesson.videoRef} />
 
           {(data.lesson.contentBlocks?.length || data.lesson.textContent) && (
-            <RichLessonView key={data.lesson.id} contentBlocks={data.lesson.contentBlocks} textContent={data.lesson.textContent} />
+            <Suspense fallback={<p>Загружаем оформление урока…</p>}><RichLessonView key={data.lesson.id} contentBlocks={data.lesson.contentBlocks} textContent={data.lesson.textContent} /></Suspense>
           )}
 
           {data.attachments.length > 0 && (
