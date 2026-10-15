@@ -46,7 +46,7 @@ class DeploymentGuardTests(unittest.TestCase):
     def test_failed_deploy_recovers_and_blocks_retries(self):
         self.assertIn('trap rollback ERR', SCRIPT)
         self.assertIn('rsync -a --delete "$BACKUP/server-dist/"', SCRIPT)
-        self.assertIn('rsync -a --delete --chmod=D755,F644 "$BACKUP/frontend/"', SCRIPT)
+        self.assertIn('rsync -a --checksum --delete --chmod=D755,F644 "$BACKUP/frontend/"', SCRIPT)
         self.assertIn("RECONCILE-BEFORE-NEXT-DEPLOY", SCRIPT)
         self.assertIn("if ! systemctl start lms", SCRIPT)
 
