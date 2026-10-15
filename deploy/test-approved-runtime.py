@@ -106,7 +106,7 @@ esac
         self.assertNotEqual(result.returncode, 0, result.stdout)
         self.assertEqual((self.app / "server/dist/index.js").read_text(), "OLD_SERVER")
         self.assertEqual((self.web / "index.html").read_text(), "OLD_CLIENT")
-        self.assertEqual((self.base / "service").read_text(), "active")
+        self.assertEqual((self.base / "service").read_text().strip(), "active")
         self.assertEqual((self.base / "head").read_text().strip(), NEW)
         self.assertEqual((self.backups / "RECONCILE-BEFORE-NEXT-DEPLOY").read_text().strip(), OLD)
         again = self.run_deploy()
@@ -117,7 +117,7 @@ esac
         result = self.run_deploy()
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual((self.app / "server/dist/index.js").read_text().strip(), "NEW_SERVER")
-        self.assertEqual((self.web / "index.html").read_text().strip(), "NEW_CLIENT")
+        self.assertEqual((self.web / "index.html").read_text().strip(), "NEW_CLIENT", result.stdout + result.stderr)
         self.assertEqual((self.base / "service").read_text(), "active")
         self.assertFalse((self.backups / "RECONCILE-BEFORE-NEXT-DEPLOY").exists())
 
