@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "./api";
-import { CourseEditor } from "./CourseEditor";
+import { CourseBuilder } from "./CourseBuilder";
 
 type Course = {
   id: string;
@@ -55,7 +55,7 @@ export function CoursesTab() {
 
   if (openId) {
     return (
-      <CourseEditor
+      <CourseBuilder
         courseId={openId}
         onBack={() => {
           setOpenId(null);
