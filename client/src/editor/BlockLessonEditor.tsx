@@ -76,7 +76,7 @@ export function BlockLessonEditor({ lessonId, contentBlocks, textContent, conten
     setImageError("");
     try {
       const url = await uploadFile(file);
-      const match = /^/api/attachments/([0-9a-f-]+)/inline$/i.exec(url);
+      const match = url.match(new RegExp("^/api/attachments/([0-9a-f-]+)/inline$", "i"));
       if (!match) throw new Error("Некорректная ссылка изображения");
       insertInlineImage(match[1], file.name);
       onAttachmentsChange?.();
@@ -148,7 +148,7 @@ export function BlockLessonEditor({ lessonId, contentBlocks, textContent, conten
         <div className="lms-emoji-picker">
           <button type="button" aria-expanded={chooseExisting} onClick={()=>setChooseExisting(v=>!v)}>Фото из файлов</button>
           {chooseExisting && <div className="lms-callout-options" role="group" aria-label="Фото из вложений урока">
-            {attachments.filter(a=>/\\.(jpe?g|png)$/i.test(a.file_name)).length ? attachments.filter(a=>/\\.(jpe?g|png)$/i.test(a.file_name)).map(a=>
+            {attachments.filter(a=>[".jpg",".jpeg",".png"].some(ext=>a.file_name.toLowerCase().endsWith(ext))).length ? attachments.filter(a=>[".jpg",".jpeg",".png"].some(ext=>a.file_name.toLowerCase().endsWith(ext))).map(a=>
               <button type="button" key={a.id} onClick={()=>{insertInlineImage(a.id,a.file_name);setChooseExisting(false)}}>🖼 {a.file_name}</button>) :
               <p>В этом уроке нет загруженных JPG или PNG.</p>}
           </div>}
