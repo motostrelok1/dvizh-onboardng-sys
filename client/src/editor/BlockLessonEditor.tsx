@@ -76,7 +76,7 @@ export function BlockLessonEditor({ lessonId, contentBlocks, textContent, conten
     setImageError("");
     try {
       const url = await uploadFile(file);
-      const match = /^\\/api\\/attachments\\/([0-9a-f-]+)\\/inline$/i.exec(url);
+      const match = /^/api/attachments/([0-9a-f-]+)/inline$/i.exec(url);
       if (!match) throw new Error("Некорректная ссылка изображения");
       insertInlineImage(match[1], file.name);
       onAttachmentsChange?.();
