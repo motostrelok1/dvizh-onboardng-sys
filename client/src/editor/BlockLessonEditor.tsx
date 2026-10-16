@@ -15,11 +15,12 @@ type Props = {
   contentBlocks: PartialBlock[] | null;
   textContent: string | null;
   contentRevision: number;
+  onDirtyChange?: (dirty: boolean) => void;
 };
 type SaveState = "saved" | "dirty" | "saving" | "error" | "conflict";
 const emojiChoices = ["✅", "⚠️", "💡", "📌", "🚗", "📝", "📖", "🎯", "🔍", "⭐", "➡️", "❗"];
 
-export function BlockLessonEditor({ lessonId, contentBlocks, textContent, contentRevision }: Props) {
+export function BlockLessonEditor({ lessonId, contentBlocks, textContent, contentRevision, onDirtyChange }: Props) {
   const revision = useRef(contentRevision);
   const dirtyVersion = useRef(0);
   const savedVersion = useRef(0);
@@ -29,6 +30,10 @@ export function BlockLessonEditor({ lessonId, contentBlocks, textContent, conten
   const [saveError, setSaveError] = useState("");
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [calloutOpen, setCalloutOpen] = useState(false);
+  useEffect(() => {
+    onDirtyChange?.(status !== "saved");
+    return () => onDirtyChange?.(false);
+  }, [status, onDirtyChange]);
 
   const uploadFile = useCallback(async (file: File) => {
     if (!["image/jpeg", "image/png"].includes(file.type) || file.size > 10 * 1024 * 1024) {
