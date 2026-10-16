@@ -13,7 +13,7 @@ button,
 input,
 textarea,
 select { font-family: inherit; }
-button {
+button:not(:where(.bn-root button, .bn-toolbar button, .bn-formatting-toolbar button, .mantine-ActionIcon-root, .mantine-Button-root, .mantine-UnstyledButton-root, [data-floating-ui-portal] button)) {
   appearance: none;
   border: 1px solid var(--ui-line);
   border-radius: var(--ui-radius);
@@ -27,9 +27,9 @@ button {
   cursor: pointer;
   transition: background-color .16s ease, border-color .16s ease, box-shadow .16s ease;
 }
-button:hover:not(:disabled) { background: #edf4ff; border-color: #a6c6ef; }
-button:disabled { opacity: .5; cursor: not-allowed; }
-button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+button:not(:where(.bn-root button, .bn-toolbar button, .bn-formatting-toolbar button, .mantine-ActionIcon-root, .mantine-Button-root, .mantine-UnstyledButton-root, [data-floating-ui-portal] button)):hover:not(:disabled) { background: #edf4ff; border-color: #a6c6ef; }
+button:not(:where(.bn-root button, .bn-toolbar button, .bn-formatting-toolbar button, .mantine-ActionIcon-root, .mantine-Button-root, .mantine-UnstyledButton-root, [data-floating-ui-portal] button)):disabled { opacity: .5; cursor: not-allowed; }
+button:not(:where(.bn-root button, .bn-toolbar button, .bn-formatting-toolbar button, .mantine-ActionIcon-root, .mantine-Button-root, .mantine-UnstyledButton-root, [data-floating-ui-portal] button)):focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
   outline: 3px solid var(--ui-focus); outline-offset: 2px;
 }
 input:not([type=checkbox]):not([type=radio]):not([type=file]),
@@ -53,7 +53,7 @@ input[type=file]::file-selector-button {
 input[type=file]::file-selector-button:hover { background: #e9f2ff; }
 
 /* Admin: all content-area actions, including legacy buttons with no class. */
-.lms-admin .lms-content button:where(:not(.lms-collapse-toggle):not(.lms-course-title)) {
+.lms-admin .lms-content button:where(:not(.lms-collapse-toggle):not(.lms-course-title)):not(:where(.bn-root button, .bn-toolbar button, .bn-formatting-toolbar button, .mantine-ActionIcon-root, .mantine-Button-root, .mantine-UnstyledButton-root, [data-floating-ui-portal] button)) {
   appearance: none;
   border: 1px solid #cdddf1;
   background: #fff;
@@ -67,7 +67,7 @@ input[type=file]::file-selector-button:hover { background: #e9f2ff; }
   line-height: 1.3;
   box-shadow: 0 1px 2px rgba(19, 55, 105, .04);
 }
-.lms-admin .lms-content button:where(:not(.lms-collapse-toggle):not(.lms-course-title)):hover:not(:disabled) {
+.lms-admin .lms-content button:where(:not(.lms-collapse-toggle):not(.lms-course-title)):not(:where(.bn-root button, .bn-toolbar button, .bn-formatting-toolbar button, .mantine-ActionIcon-root, .mantine-Button-root, .mantine-UnstyledButton-root, [data-floating-ui-portal] button)):hover:not(:disabled) {
   background: #edf4ff;
   border-color: #9ebfec;
 }
@@ -145,7 +145,7 @@ input[type=file]::file-selector-button:hover { background: #e9f2ff; }
   .lms-admin .lms-content :is(.lms-lesson-card,.lms-module-card) { padding:12px; }
   .lms-admin .lms-content input:not([type=checkbox]):not([type=radio]):not([type=file]) { min-width:0; }
   .lms-admin .lms-content :is(.lms-test-editor,.lms-question-editor) { padding:11px; }
-  button { min-height: 40px; }
+  button:not(:where(.bn-root button, .bn-toolbar button, .bn-formatting-toolbar button, .mantine-ActionIcon-root, .mantine-Button-root, .mantine-UnstyledButton-root, [data-floating-ui-portal] button)) { min-height: 40px; }
 }
 @media(prefers-reduced-motion:reduce) {
   button { transition:none; }
