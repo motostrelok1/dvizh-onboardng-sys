@@ -48,3 +48,12 @@ test("blocks image injection and unsafe links", () => {
   }]}]),false);
   assert.equal(validateLessonBlocks([{type:"callout",props:{variant:"raw-html"},content:[]}]),false);
 });
+
+test("accepts pasted formatting and modern numbered-list metadata", () => {
+  const blocks = [
+    { type:"paragraph", props:{ textColor:"#333", backgroundColor:"rgb(240, 240, 240)", textAlignment:"left" },
+      content:[{ type:"text", text:"Текст академии вождения",styles:{bold:true,backgroundColor:"rgba(230, 45, 45, 0.2)"} }],children:[] },
+    { type:"numberedListItem",props:{listItemNumber:2},content:[],children:[] }
+  ];
+  assert.equal(validateLessonBlocks(blocks), true);
+});

@@ -5,7 +5,7 @@ const blockTypes = new Set([
 ]);
 const propsKeys = new Set([
   "textColor", "backgroundColor", "textAlignment", "level", "checked",
-  "language", "isToggleable", "url", "name", "caption", "showPreview", "previewWidth", "variant", "start"
+  "language", "isToggleable", "url", "name", "caption", "showPreview", "previewWidth", "variant", "start", "listItemNumber"
 ]);
 const styleKeys = new Set(["bold", "italic", "underline", "strike", "code", "textColor", "backgroundColor"]);
 const uuid = "[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}";
@@ -19,7 +19,9 @@ function allowedKeys(v: RecordData, allowed: readonly string[]): boolean {
   return Object.keys(v).every((key) => allowed.includes(key));
 }
 function simpleColor(v: unknown): boolean {
-  return typeof v === "string" && v.length < 40 && (/^[a-zA-Z]+$/.test(v) || /^#[0-9a-f]{6}$/i.test(v));
+  return typeof v === "string" && v.length < 80 &&
+    (/^[a-zA-Z]+$/.test(v) || /^#[0-9a-f]{3,8}$/i.test(v) ||
+     /^rgba?[(][0-9, .%]+[)]$/i.test(v));
 }
 function validProps(value: unknown, type: string): boolean {
   if (value === undefined) return true;
@@ -35,6 +37,8 @@ function validProps(value: unknown, type: string): boolean {
       if (typeof v !== "string" || v.length > 1000) return false;
     } else if (key === "variant") {
       if (type !== "callout" || !["important", "tip", "warning", "example", "remember"].includes(String(v))) return false;
+    } else if (key === "listItemNumber") {
+      if (type !== "numberedListItem" || !Number.isInteger(v) || (v as number) < 1 || (v as number) > 100000) return false;
     } else if (key === "start") {
       if (type !== "numberedListItem" || !Number.isInteger(v) || (v as number) < 1 || (v as number) > 100000) return false;
     } else if (key === "level") {

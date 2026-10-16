@@ -26,6 +26,7 @@ export function BlockLessonEditor({ lessonId, contentBlocks, textContent, conten
   const inFlight = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [status, setStatus] = useState<SaveState>("saved");
+  const [saveError, setSaveError] = useState("");
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [calloutOpen, setCalloutOpen] = useState(false);
 
@@ -54,6 +55,7 @@ export function BlockLessonEditor({ lessonId, contentBlocks, textContent, conten
     inFlight.current = true;
     const version = dirtyVersion.current;
     setStatus("saving");
+    setSaveError("");
     try {
       const result = await api.patch<{ contentRevision: number }>(
         `/admin/lessons/${lessonId}/blocks`,
@@ -65,6 +67,7 @@ export function BlockLessonEditor({ lessonId, contentBlocks, textContent, conten
     } catch (error) {
       const reason = error instanceof Error ? error.message : "";
       setStatus(reason.includes("content_revision_conflict") ? "conflict" : "error");
+      setSaveError(reason || "Ошибка соединения");
       return;
     } finally {
       inFlight.current = false;
@@ -135,6 +138,9 @@ export function BlockLessonEditor({ lessonId, contentBlocks, textContent, conten
     </div>
     <p className="lms-rich-hint">Наберите / для выбора блока. Перетаскивайте блоки, добавляйте изображения и форматируйте текст.</p>
     <BlockNoteView editor={editor} onChange={changed} theme="light" />
+    {status === "error" && <p role="alert" className="lms-form-error">
+      Не удалось сохранить урок ({saveError}). Текст пока есть только в редакторе; не закрывайте страницу. Попробуйте «Сохранить» ещё раз.
+    </p>}
     {status === "conflict" && <p role="alert" className="lms-form-error">
       Содержимое изменено в другой вкладке. Скопируйте несохранённый текст перед обновлением страницы.
     </p>}
