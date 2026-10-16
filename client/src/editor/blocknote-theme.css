@@ -30,3 +30,10 @@
 .lms-callout-content{flex:1;min-width:0}
 .lms-callout-label{font-size:12px;font-weight:800;display:block;margin-bottom:4px}
 .lms-callout-text{font-size:14px;line-height:1.6;min-height:20px}
+
+/* Explicit inline-image insertion, distinct from attachment upload. */
+.lms-insert-image-button{display:inline-flex;align-items:center;justify-content:center;position:relative;gap:7px;min-height:38px;padding:8px 12px;border:1px solid #bad1ee;border-radius:9px;background:#edf5ff;color:#245eac;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap}
+.lms-insert-image-button:hover{background:#e1eeff}
+.lms-insert-image-button:focus-within{outline:2px solid #69a5fa;outline-offset:2px}
+.lms-insert-image-button input[type=file]{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none}
+.lms-rich-editor .lms-callout-options{max-width:min(320px,90vw);overflow-wrap:anywhere}
