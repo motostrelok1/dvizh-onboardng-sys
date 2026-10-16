@@ -29,7 +29,8 @@ export function CourseBuilder({courseId,onBack}:{courseId:string;onBack:()=>void
   const [dragged,setDragged]=useState<{kind:"module"|"lesson";id:string;moduleId?:string}|null>(null);
   const [showAnalytics,setShowAnalytics]=useState(false);
   const [unsaved,setUnsaved]=useState(false);
-  function allowLeave(){return !unsaved||window.confirm("Текст урока ещё сохраняется или сохранение завершилось ошибкой. Переключение может привести к потере изменений. Всё равно продолжить?");}\n  function selectPanel(next:Panel){if(next!==panel&&!allowLeave())return;setPanel(next);}
+  function allowLeave(){return !unsaved||window.confirm("Текст урока ещё сохраняется или сохранение завершилось ошибкой. Переключение может привести к потере изменений. Всё равно продолжить?");}
+  function selectPanel(next:Panel){if(next!==panel&&!allowLeave())return;setPanel(next);}
 
   async function reload(preferLesson?:string) {
     const result=await api.get<Tree>(`/admin/courses/${courseId}/tree`);
