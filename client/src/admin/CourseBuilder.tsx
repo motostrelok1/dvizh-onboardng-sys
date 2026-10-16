@@ -28,6 +28,8 @@ export function CourseBuilder({courseId,onBack}:{courseId:string;onBack:()=>void
   const [openModules,setOpenModules]=useState<Record<string,boolean>>({});
   const [dragged,setDragged]=useState<{kind:"module"|"lesson";id:string;moduleId?:string}|null>(null);
   const [showAnalytics,setShowAnalytics]=useState(false);
+  const [unsaved,setUnsaved]=useState(false);
+  function allowLeave(){return !unsaved||window.confirm("Текст урока ещё сохраняется или сохранение завершилось ошибкой. Переключение может привести к потере изменений. Всё равно продолжить?");}
 
   async function reload(preferLesson?:string) {
     const result=await api.get<Tree>(`/admin/courses/${courseId}/tree`);
@@ -91,11 +93,11 @@ export function CourseBuilder({courseId,onBack}:{courseId:string;onBack:()=>void
   const current=selection?.lesson;
   return <section className="lms-builder">
     <header className="lms-builder-header">
-      <div><button className="lms-builder-back" type="button" onClick={onBack}>← К списку курсов</button>
+      <div><button className="lms-builder-back" type="button" onClick={()=>{if(allowLeave())onBack()}}>← К списку курсов</button>
         <h2>{tree.course.title}</h2><p>Создание и оформление учебных материалов</p></div>
       <div className="lms-builder-header-actions">
         <span className={`lms-builder-state ${tree.course.status==="published"?"is-published":""}`}>{tree.course.status==="published"?"● Опубликован":tree.course.status==="draft"?"● Черновик":"● Архив"}</span>
-        <button type="button" onClick={()=>setPreview(true)}>◉ Предпросмотр курса</button>
+        <button type="button" onClick={()=>{if(allowLeave())setPreview(true)}}>◉ Предпросмотр курса</button>
         <button type="button" onClick={()=>setShowAnalytics(v=>!v)}>{showAnalytics?"Скрыть аналитику":"⚙ Настройки курса"}</button>
       </div>
     </header>
@@ -132,7 +134,7 @@ export function CourseBuilder({courseId,onBack}:{courseId:string;onBack:()=>void
               onDragOver={e=>{if(dragged?.kind==="lesson"&&dragged.moduleId===m.id)e.preventDefault()}}
               onDrop={e=>{if(dragged?.kind==="lesson"){e.preventDefault();e.stopPropagation();void dropOn("lesson",l.id,m.id)}}}>
               <span draggable title="Перетащить урок" onDragStart={e=>{e.dataTransfer.effectAllowed="move";setDragged({kind:"lesson",id:l.id,moduleId:m.id})}} onDragEnd={()=>setDragged(null)}>⠿</span>
-              <button type="button" aria-current={l.id===activeLesson?"true":undefined} onClick={()=>{setActiveLesson(l.id);setActiveModule(m.id);setPanel("text")}}>
+              <button type="button" aria-current={l.id===activeLesson?"true":undefined} onClick={()=>{if(l.id!==activeLesson&&!allowLeave())return;setUnsaved(false);setActiveLesson(l.id);setActiveModule(m.id);setPanel("text")}}>
                 <span>▤</span> {i+1}.{j+1} {l.title}</button>
               <div className="lms-builder-compact">
                 <button aria-label="Урок выше" disabled={busy||j===0} onClick={()=>void moveLesson(m.id,l.id,-1)}>↑</button>
@@ -164,7 +166,7 @@ export function CourseBuilder({courseId,onBack}:{courseId:string;onBack:()=>void
         </div>
         <div className="lms-builder-content">
           {panel==="text"?<><div className="lms-builder-content-title"><strong>Редактор текста</strong><small>Добавляйте блоки через /, вставляйте фотографии и эмодзи</small></div>
-          <Suspense fallback={<p>Загружаем BlockNote…</p>}><RichEditor key={current.id} lessonId={current.id} contentBlocks={current.content_blocks??null} textContent={current.text_content} contentRevision={current.content_revision??0}/></Suspense></>:
+          <Suspense fallback={<p>Загружаем BlockNote…</p>}><RichEditor key={current.id} lessonId={current.id} contentBlocks={current.content_blocks??null} textContent={current.text_content} contentRevision={current.content_revision??0} onDirtyChange={setUnsaved}/></Suspense></>:
           panel==="video"?<div className="lms-builder-empty">Управление видео находится в панели справа →</div>:
           panel==="files"?<div className="lms-builder-files">{current.attachments.map(a=><p key={a.id}>📎 {a.file_name} · {Math.ceil(a.size_bytes/1024)} КБ</p>)}{current.attachments.length===0&&"Материалов пока нет. Добавьте их справа."}</div>:
           panel==="test"?<TestBlock test={current.test} scope="lesson" parentId={current.id} onReload={()=>void reload()}/>:
