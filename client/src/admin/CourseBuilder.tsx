@@ -167,7 +167,7 @@ export function CourseBuilder({courseId,onBack}:{courseId:string;onBack:()=>void
         </div>
         <div className="lms-builder-content">
           {panel==="text"?<><div className="lms-builder-content-title"><strong>Редактор текста</strong><small>Добавляйте блоки через /, вставляйте фотографии и эмодзи</small></div>
-          <Suspense fallback={<p>Загружаем BlockNote…</p>}><RichEditor key={current.id} lessonId={current.id} contentBlocks={current.content_blocks??null} textContent={current.text_content} contentRevision={current.content_revision??0} onDirtyChange={setUnsaved}/></Suspense></>:
+          <Suspense fallback={<p>Загружаем BlockNote…</p>}><RichEditor key={current.id} lessonId={current.id} contentBlocks={current.content_blocks??null} textContent={current.text_content} contentRevision={current.content_revision??0} onDirtyChange={setUnsaved} attachments={current.attachments} onAttachmentsChange={()=>void reload()}/></Suspense></>:
           panel==="video"?<div className="lms-builder-empty">Управление видео находится в панели справа →</div>:
           panel==="files"?<div className="lms-builder-files">{current.attachments.map(a=><p key={a.id}>📎 {a.file_name} · {Math.ceil(a.size_bytes/1024)} КБ</p>)}{current.attachments.length===0&&"Материалов пока нет. Добавьте их справа."}</div>:
           panel==="test"?<TestBlock test={current.test} scope="lesson" parentId={current.id} onReload={()=>void reload()}/>:
