@@ -19,7 +19,9 @@ function allowedKeys(v: RecordData, allowed: readonly string[]): boolean {
   return Object.keys(v).every((key) => allowed.includes(key));
 }
 function simpleColor(v: unknown): boolean {
-  return typeof v === "string" && v.length < 80 && (/^[a-zA-Z]+$/.test(v) || /^#[0-9a-f]{3,8}$/i.test(v) || /^rgba?\\(\\s*\\d{1,3}\\s*,\\s*\\d{1,3}\\s*,\\s*\\d{1,3}(?:\\s*,\\s*(?:0(?:\\.\\d+)?|1(?:\\.0+)?))?\\s*\\)$/i.test(v));
+  return typeof v === "string" && v.length < 80 &&
+    (/^[a-zA-Z]+$/.test(v) || /^#[0-9a-f]{3,8}$/i.test(v) ||
+     /^rgba?[(][0-9, .%]+[)]$/i.test(v));
 }
 function validProps(value: unknown, type: string): boolean {
   if (value === undefined) return true;
