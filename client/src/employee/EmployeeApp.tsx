@@ -3,6 +3,7 @@ import { api } from "../admin/api";
 import { LoginForm, type SessionUser } from "../shared/LoginForm";
 import { CourseScreen } from "./CourseScreen";
 import { Notifications } from "./Notifications";
+import { MyCoursesDashboard } from "./MyCoursesDashboard";
 
 type AssignedCourse = {
   assignment_id: string;
@@ -28,6 +29,8 @@ export default function EmployeeApp() {
   const [assigned, setAssigned] = useState<AssignedCourse[]>([]);
   const [catalog, setCatalog] = useState<CatalogCourse[]>([]);
   const [openCourseId, setOpenCourseId] = useState<string | null>(null);
+  const [actionError,setActionError]=useState<string|null>(null);
+  const [enrolling,setEnrolling]=useState(false);
 
   function reload() {
     api
@@ -57,63 +60,14 @@ export default function EmployeeApp() {
   }
 
   async function enroll(courseId: string) {
-    await api.post(`/courses/${courseId}/enroll`);
-    reload();
-    setOpenCourseId(courseId);
+    if(enrolling)return;
+    setEnrolling(true);setActionError(null);
+    try { await api.post(`/courses/${courseId}/enroll`);reload();setOpenCourseId(courseId); }
+    catch(e) { setActionError(e instanceof Error?e.message:"Не удалось записаться на курс"); }
+    finally { setEnrolling(false); }
   }
-
-  return (
-    <div style={{ fontFamily: "system-ui", maxWidth: 480, margin: "0 auto", padding: 24 }}>
-      <header style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}>
-        <h1>Мои курсы</h1>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <Notifications />
-          <button onClick={() => api.post("/auth/logout").then(() => setUser(null))}>Выйти</button>
-        </div>
-      </header>
-
-      {assigned.map((c) => (
-        <div
-          key={c.assignment_id}
-          onClick={() => c.status !== "overdue" && setOpenCourseId(c.course_id)}
-          style={{
-            border: "1px solid #ddd",
-            borderRadius: 10,
-            padding: 14,
-            marginBottom: 10,
-            cursor: c.status === "overdue" ? "default" : "pointer",
-            opacity: c.status === "overdue" ? 0.6 : 1
-          }}
-        >
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <strong>{c.title}</strong>
-            <span style={{ fontSize: 12, color: c.status === "overdue" ? "crimson" : "#666" }}>
-              {STATUS_LABEL[c.status] ?? c.status}
-            </span>
-          </div>
-          {c.deadline && (
-            <div style={{ fontSize: 12, color: "#888" }}>
-              Срок: {new Date(c.deadline).toLocaleDateString()}
-            </div>
-          )}
-        </div>
-      ))}
-
-      {catalog.length > 0 && (
-        <>
-          <h2 style={{ marginTop: 24 }}>Открытый каталог</h2>
-          {catalog.map((c) => (
-            <div key={c.course_id} style={{ border: "1px solid #ddd", borderRadius: 10, padding: 14, marginBottom: 10 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <strong>{c.title}</strong>
-                <button onClick={() => enroll(c.course_id)}>Записаться</button>
-              </div>
-            </div>
-          ))}
-        </>
-      )}
-
-      {assigned.length === 0 && catalog.length === 0 && <p>Пока нет назначенных курсов.</p>}
-    </div>
-  );
+  return <MyCoursesDashboard assigned={assigned} catalog={catalog} onOpen={setOpenCourseId}
+    onEnroll={id=>void enroll(id)} notifications={<Notifications />}
+    onLogout={()=>{void api.post("/auth/logout").then(()=>setUser(null)).catch(()=>setActionError("Не удалось выйти"))}}
+    error={actionError} busy={enrolling} />;
 }
