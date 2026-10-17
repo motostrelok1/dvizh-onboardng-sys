@@ -18,7 +18,7 @@ const ERROR_MESSAGE: Record<string, string> = {
   deadline_passed: "Срок прохождения этого курса истёк, доступ закрыт.",
   not_assigned: "Этот курс вам не назначен.",
   not_enrolled: "Сначала запишитесь на курс из каталога.",
-  not_found: "Урок не найден."
+  not_found: "Блок не найден."
 };
 
 export function LessonScreen({ lessonId, onBack }: { lessonId: string; onBack: () => void }) {
@@ -51,28 +51,28 @@ export function LessonScreen({ lessonId, onBack }: { lessonId: string; onBack: (
   }, [data, lessonId]);
 
   return (
-    <div style={{ fontFamily: "system-ui", maxWidth: 480, margin: "0 auto", padding: 24 }}>
+    <article className="dv-learning-content-card">
       <button onClick={onBack} style={{ marginBottom: 12 }}>
         ← Назад к курсу
       </button>
 
-      {error && <p style={{ color: "crimson" }}>{ERROR_MESSAGE[error] ?? "Не удалось открыть урок."}</p>}
+      {error && <p style={{ color: "crimson" }}>{ERROR_MESSAGE[error] ?? "Не удалось открыть блок."}</p>}
 
       {data && (
         <>
-          <h1>{data.lesson.title}</h1>
+          <h1 className="dv-learning-lesson-title">{data.lesson.title}</h1>
 
           <VideoPlayer provider={data.lesson.videoProvider} videoRef={data.lesson.videoRef} />
 
           {(data.lesson.contentBlocks?.length || data.lesson.textContent) && (
-            <Suspense fallback={<p>Загружаем оформление урока…</p>}><RichLessonView key={data.lesson.id} contentBlocks={data.lesson.contentBlocks} textContent={data.lesson.textContent} /></Suspense>
+            <Suspense fallback={<p>Загружаем содержимое блока…</p>}><RichLessonView key={data.lesson.id} contentBlocks={data.lesson.contentBlocks} textContent={data.lesson.textContent} /></Suspense>
           )}
 
           {data.attachments.length > 0 && (
-            <div style={{ marginTop: 16 }}>
-              <h3 style={{ fontSize: 14 }}>Дополнительные материалы</h3>
+            <section className="dv-learning-attachments">
+              <h3>♧ Дополнительные материалы</h3><div className="dv-learning-files">
               {data.attachments.map((a) => (
-                <div key={a.id} style={{ marginBottom: 6 }}>
+                <a key={a.id} className="dv-learning-file" href={`/api/attachments/${a.id}/download`} download>
                   <a href={`/api/attachments/${a.id}/download`} download>
                     📄 {a.file_name}
                   </a>{" "}
