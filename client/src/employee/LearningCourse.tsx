@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../admin/api";
+import { flush } from "../events";
 import { LessonScreen } from "./LessonScreen";
 import { TestScreen } from "./TestScreen";
 import "./course-learning.css";
@@ -11,6 +12,21 @@ const errors:Record<string,string> = {deadline_passed:"Срок доступа �
 export function LearningCourse({ courseId, onBack }: { courseId: string; onBack: () => void }) {
   const [data,setData]=useState<Data|null>(null),[error,setError]=useState<string|null>(null);
   const [current,setCurrent]=useState<string|null>(null),[test,setTest]=useState<string|null>(null);
+  const [completing,setCompleting]=useState(false),[completionError,setCompletionError]=useState("");
+  async function completeCourse(){
+    if(completing)return;
+    setCompleting(true);setCompletionError("");
+    try {
+      await flush();
+      await api.post(`/me/courses/${courseId}/complete`, {});
+      onBack();
+    } catch(e) {
+      const message=e instanceof Error?e.message:"";
+      setCompletionError(message.includes("course_incomplete")
+        ?"Для завершения просмотрите все уроки и успешно пройдите все тесты курса."
+        :"Не удалось завершить курс. Проверьте соединение и попробуйте ещё раз.");
+    } finally {setCompleting(false)}
+  }
   useEffect(()=>{let alive=true;setData(null);setCurrent(null);setTest(null);setError(null);
     api.get<Data>(`/me/courses/${courseId}`).then(v=>{if(alive)setData(v)}).catch(e=>{if(alive)setError(e.message)});
     return()=>{alive=false};
@@ -46,10 +62,11 @@ export function LearningCourse({ courseId, onBack }: { courseId: string; onBack:
           <article className="dv-learning-content-card dv-learning-intro"><span className="dv-learning-eyebrow">Учебный курс</span><h1>{data.course.title}</h1>{data.course.description&&<p>{data.course.description}</p>}
             {blocks.length?<button className="dv-learning-primary" onClick={()=>choose(blocks[0].id)}>Начать с первого блока →</button>:<p>В этом курсе пока нет блоков.</p>}
           </article>}
+        {completionError&&<p role="alert" className="dv-learning-error">{completionError}</p>}
         {idx>=0&&<div className="dv-learning-footer">
           <button className="dv-learning-outline" disabled={idx===0} onClick={()=>choose(blocks[idx-1].id)}>← Предыдущий блок</button>
           {idx+1<blocks.length?<button className="dv-learning-primary" onClick={()=>choose(blocks[idx+1].id)}>Следующий блок →</button>:
-            <button className="dv-learning-primary" onClick={()=>setCurrent(null)}>К обзору курса ✓</button>}
+            <button className="dv-learning-primary" disabled={completing} onClick={()=>void completeCourse()}>{completing?"Проверяем…":"Завершить курс ✓"}</button>}
         </div>}
       </main>
     </div>
