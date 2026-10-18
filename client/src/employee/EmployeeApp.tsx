@@ -56,7 +56,7 @@ export default function EmployeeApp() {
   if (user === null) return <LoginForm onLogin={setUser} />;
 
   if (openCourseId) {
-    return <CourseScreen courseId={openCourseId} onBack={() => setOpenCourseId(null)} />;
+    return <CourseScreen courseId={openCourseId} onBack={() => { setOpenCourseId(null); reload(); }} />;
   }
 
   async function enroll(courseId: string) {
