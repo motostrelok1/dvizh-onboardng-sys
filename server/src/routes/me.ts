@@ -36,6 +36,64 @@ export async function meRoutes(app: FastifyInstance) {
     return { assigned: assignedRes.rows, catalog: catalogRes.rows };
   });
 
+  // Завершение курса — только после просмотра всех уроков и успешной сдачи тестов.
+  // Проверка выполняется на сервере; позиция последнего блока не является прогрессом.
+  app.post<{ Params: { id: string } }>("/me/courses/:id/complete", async (req, reply) => {
+    const courseId = req.params.id;
+    const userId = req.currentUser!.id;
+    const client = await pool.connect();
+    try {
+      await client.query("begin");
+      const res = await client.query(
+        `select id, status, coalesce(deadline <= clock_timestamp(), false) as deadline_passed
+         from assignments where user_id = $1 and course_id = $2 for update`,
+        [userId, courseId]
+      );
+      const assignment = res.rows[0];
+      if (!assignment) { await client.query("rollback"); return reply.code(403).send({ error: "not_assigned" }); }
+      if (assignment.status === "completed") { await client.query("commit"); return { ok: true, status: "completed" }; }
+      if (assignment.status === "closed" || assignment.status === "overdue" || assignment.deadline_passed) {
+        await client.query("rollback");
+        return reply.code(403).send({ error: "deadline_passed" });
+      }
+      const lessons = await client.query(
+        `select count(*)::int as total,
+                count(*) filter (where exists (
+                  select 1 from events e where e.user_id = $2
+                    and e.event_type = 'lesson_view_start' and e.entity_id = l.id
+                ))::int as viewed
+         from lessons l join modules m on m.id = l.module_id where m.course_id = $1`,
+        [courseId, userId]
+      );
+      const { total, viewed } = lessons.rows[0];
+      const missingTests = await client.query(
+        `select count(*)::int as missing from tests t
+         where (
+           (t.scope = 'module' and t.parent_id in (select id from modules where course_id = $1))
+           or (t.scope = 'lesson' and t.parent_id in (
+             select l.id from lessons l join modules m on m.id = l.module_id where m.course_id = $1
+           ))
+         ) and not exists (
+           select 1 from test_attempts a where a.test_id = t.id and a.user_id = $2
+             and a.status = 'finished' and a.passed = true
+         )`,
+        [courseId, userId]
+      );
+      const remainingTests = missingTests.rows[0].missing as number;
+      if (total === 0 || viewed < total || remainingTests > 0) {
+        await client.query("rollback");
+        return reply.code(409).send({ error: "course_incomplete", totalLessons: total,
+          viewedLessons: viewed, remainingTests });
+      }
+      await client.query("update assignments set status = 'completed' where id = $1", [assignment.id]);
+      await client.query("commit");
+      return { ok: true, status: "completed" };
+    } catch (e) {
+      await client.query("rollback");
+      throw e;
+    } finally { client.release(); }
+  });
+
   // Самозапись на курс из открытого каталога
   app.post<{ Params: { id: string } }>("/courses/:id/enroll", async (req, reply) => {
     const courseRes = await pool.query(`select * from courses where id = $1`, [req.params.id]);
