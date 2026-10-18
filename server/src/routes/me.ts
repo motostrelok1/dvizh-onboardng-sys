@@ -166,6 +166,23 @@ export async function meRoutes(app: FastifyInstance) {
     );
     const testByParent = new Map(testsRes.rows.map((t) => [t.parent_id, t]));
 
+    // Сохраняем просмотренные уроки и последнюю позицию по серверному журналу событий.
+    const viewedRes = await pool.query(
+      `select distinct e.entity_id from events e
+       join lessons l on l.id = e.entity_id
+       join modules m on m.id = l.module_id
+       where e.user_id = $1 and m.course_id = $2 and e.event_type = 'lesson_view_start'`,
+      [userId, courseId]
+    );
+    const lastViewedRes = await pool.query(
+      `select e.entity_id from events e
+       join lessons l on l.id = e.entity_id
+       join modules m on m.id = l.module_id
+       where e.user_id = $1 and m.course_id = $2 and e.event_type = 'lesson_view_start'
+       order by e.occurred_at desc, e.created_at desc limit 1`,
+      [userId, courseId]
+    );
+
     const tree = modules.map((m) => ({
       id: m.id,
       title: m.title,
@@ -184,7 +201,7 @@ export async function meRoutes(app: FastifyInstance) {
         }))
     }));
 
-    return { course, assignment, modules: tree };
+    return { course, assignment, modules: tree, viewedLessonIds: viewedRes.rows.map(r => r.entity_id as string), resumeLessonId: lastViewedRes.rows[0]?.entity_id ?? null };
   });
 
   // Содержимое урока: текст, видео, список вложений (без контента файла —
