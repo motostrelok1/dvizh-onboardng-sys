@@ -14,7 +14,7 @@ export async function meRoutes(app: FastifyInstance) {
 
     const assignedRes = await pool.query(
       `select a.id as assignment_id,
-              case when a.deadline <= clock_timestamp() then 'overdue' else a.status end as status,
+              case when a.status = 'completed' then 'completed' when a.deadline <= clock_timestamp() then 'overdue' else a.status end as status,
               a.deadline, a.is_required,
               c.id as course_id, c.title, c.description
        from assignments a
