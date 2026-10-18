@@ -161,18 +161,19 @@ export function CourseBuilder({courseId,onBack}:{courseId:string;onBack:()=>void
         </div>
         <div className="lms-builder-block-list" aria-label="Состав урока">
           <button className={panel==="text"?"active":""} onClick={()=>selectPanel("text")}><span className="icon">▤</span><span><b>Текст и оформление</b><small>BlockNote, таблицы, изображения и учебные блоки</small></span><span>✎</span></button>
+          {panel==="text"&&<div className="lms-builder-content lms-builder-content-inline"><div className="lms-builder-content-text"><div className="lms-builder-content-title"><strong>Редактор текста</strong><small>Добавляйте блоки через /, вставляйте фотографии и эмодзи</small></div>
+          <Suspense fallback={<p>Загружаем BlockNote…</p>}><RichEditor key={current.id} lessonId={current.id} contentBlocks={current.content_blocks??null} textContent={current.text_content} contentRevision={current.content_revision??0} onDirtyChange={setUnsaved} attachments={current.attachments} onAttachmentsChange={()=>void reload()}/></Suspense></div></div>}
           <button className={panel==="video"?"active":""} onClick={()=>selectPanel("video")}><span className="icon">▶</span><span><b>Видео</b><small>{current.video_ref||"Не добавлено"}</small></span><span>⚙</span></button>
           <button className={panel==="test"?"active":""} onClick={()=>selectPanel("test")}><span className="icon">☑</span><span><b>Тест</b><small>{current.test?`Проходной балл ${current.test.pass_score}%`:"Не добавлен"}</small></span><span>⚙</span></button>
           <button className={panel==="files"?"active":""} onClick={()=>selectPanel("files")}><span className="icon">📎</span><span><b>Дополнительные материалы</b><small>{current.attachments.length} файлов</small></span><span>⚙</span></button>
         </div>
-        <div className="lms-builder-content">
-          {panel==="text"?<><div className="lms-builder-content-title"><strong>Редактор текста</strong><small>Добавляйте блоки через /, вставляйте фотографии и эмодзи</small></div>
-          <Suspense fallback={<p>Загружаем BlockNote…</p>}><RichEditor key={current.id} lessonId={current.id} contentBlocks={current.content_blocks??null} textContent={current.text_content} contentRevision={current.content_revision??0} onDirtyChange={setUnsaved} attachments={current.attachments} onAttachmentsChange={()=>void reload()}/></Suspense></>:
+        {panel!=="text"&&<div className="lms-builder-content">
+          {
           panel==="video"?<div className="lms-builder-empty">Управление видео находится в панели справа →</div>:
           panel==="files"?<div className="lms-builder-files">{current.attachments.map(a=><p key={a.id}>📎 {a.file_name} · {Math.ceil(a.size_bytes/1024)} КБ</p>)}{current.attachments.length===0&&"Материалов пока нет. Добавьте их справа."}</div>:
           panel==="test"?<TestBlock test={current.test} scope="lesson" parentId={current.id} onReload={()=>void reload()}/>:
           <p>Выберите раздел содержимого.</p>}
-        </div></>:<div className="lms-builder-empty">Выберите урок слева или создайте новый.</div>}
+        </div>}</>:<div className="lms-builder-empty">Выберите урок слева или создайте новый.</div>}
       </main>
       <aside className="lms-builder-inspector" aria-label="Настройки выбранного раздела">
         {current?<LessonInspector key={current.id} lesson={current} panel={panel} onPanel={selectPanel} onReload={()=>void reload()} />:
